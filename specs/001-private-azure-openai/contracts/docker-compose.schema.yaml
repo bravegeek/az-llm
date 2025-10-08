@@ -1,0 +1,211 @@
+# Docker Compose Configuration Schema
+# Defines the expected structure for docker-compose.yml
+
+openapi: 3.0.3
+info:
+  title: Docker Compose Configuration Schema
+  description: Schema for docker-compose.yml orchestrating Open WebUI and LiteLLM containers
+  version: 1.0.0
+
+components:
+  schemas:
+    DockerComposeFile:
+      type: object
+      required:
+        - version
+        - services
+        - volumes
+      properties:
+        version:
+          type: string
+          enum: ["3.8"]
+          description: Docker Compose file format version
+
+        services:
+          type: object
+          required:
+            - litellm
+            - openwebui
+          properties:
+            litellm:
+              $ref: '#/components/schemas/LiteLLMService'
+            openwebui:
+              $ref: '#/components/schemas/OpenWebUIService'
+
+        volumes:
+          type: object
+          required:
+            - open-webui
+          properties:
+            open-webui:
+              type: object
+              description: Named volume for Open WebUI data persistence
+              example: {}
+
+    LiteLLMService:
+      type: object
+      required:
+        - image
+        - container_name
+        - ports
+        - volumes
+        - command
+      properties:
+        image:
+          type: string
+          pattern: '^ghcr\.io/berriai/litellm:.*'
+          example: 'ghcr.io/berriai/litellm:main-latest'
+          description: LiteLLM Docker image
+
+        container_name:
+          type: string
+          enum: ["litellm"]
+          description: Fixed container name for networking
+
+        ports:
+          type: array
+          items:
+            type: string
+            pattern: '^\d+:4000$'
+          minItems: 1
+          maxItems: 1
+          example: ["4000:4000"]
+          description: Host:container port mapping (LiteLLM runs on 4000)
+
+        volumes:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          example: ["./litellm_config.yaml:/app/config.yaml"]
+          description: Mount litellm_config.yaml into container
+
+        environment:
+          type: array
+          items:
+            type: string
+          example:
+            - "AZURE_API_KEY=${AZURE_API_KEY}"
+            - "AZURE_API_BASE=${AZURE_API_BASE}"
+          description: Environment variables (from .env file)
+
+        command:
+          type: string
+          pattern: '^--config /app/config\.yaml'
+          example: '--config /app/config.yaml'
+          description: Start LiteLLM with config file
+
+        restart:
+          type: string
+          enum: ["unless-stopped", "always", "on-failure"]
+          example: 'unless-stopped'
+          description: Container restart policy
+
+    OpenWebUIService:
+      type: object
+      required:
+        - image
+        - container_name
+        - ports
+        - volumes
+        - environment
+        - depends_on
+      properties:
+        image:
+          type: string
+          pattern: '^ghcr\.io/open-webui/open-webui:.*'
+          example: 'ghcr.io/open-webui/open-webui:main'
+          description: Open WebUI Docker image
+
+        container_name:
+          type: string
+          enum: ["openwebui"]
+          description: Fixed container name
+
+        ports:
+          type: array
+          items:
+            type: string
+            pattern: '^\d+:8080$'
+          minItems: 1
+          maxItems: 1
+          example: ["3000:8080"]
+          description: Host:container port mapping (Open WebUI runs on 8080)
+
+        volumes:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          example: ["open-webui:/app/backend/data"]
+          description: Named volume for SQLite database
+
+        environment:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          example:
+            - "OPENAI_API_BASE=http://litellm:4000/v1"
+            - "OPENAI_API_KEY=sk-dummy"
+          description: Environment variables (OPENAI_API_BASE must point to LiteLLM)
+
+        depends_on:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 1
+          example: ["litellm"]
+          description: Start LiteLLM before Open WebUI
+
+        restart:
+          type: string
+          enum: ["unless-stopped", "always", "on-failure"]
+          example: 'unless-stopped'
+          description: Container restart policy
+
+# Validation Examples
+
+examples:
+  validDockerCompose:
+    summary: Valid docker-compose.yml example
+    value:
+      version: "3.8"
+      services:
+        litellm:
+          image: ghcr.io/berriai/litellm:main-latest
+          container_name: litellm
+          ports:
+            - "4000:4000"
+          volumes:
+            - ./litellm_config.yaml:/app/config.yaml
+          environment:
+            - AZURE_API_KEY=${AZURE_API_KEY}
+            - AZURE_API_BASE=${AZURE_API_BASE}
+          command: --config /app/config.yaml
+          restart: unless-stopped
+
+        openwebui:
+          image: ghcr.io/open-webui/open-webui:main
+          container_name: openwebui
+          ports:
+            - "3000:8080"
+          volumes:
+            - open-webui:/app/backend/data
+          environment:
+            - OPENAI_API_BASE=http://litellm:4000/v1
+            - OPENAI_API_KEY=sk-dummy
+          depends_on:
+            - litellm
+          restart: unless-stopped
+
+      volumes:
+        open-webui:
+
+# Contract Tests (to be implemented in Phase 3)
+# TEST 1: Validate docker-compose.yml against this schema
+# TEST 2: Ensure litellm service has port 4000 exposed
+# TEST 3: Ensure openwebui depends_on litellm
+# TEST 4: Ensure openwebui OPENAI_API_BASE points to http://litellm:4000/v1
+# TEST 5: Ensure named volume "open-webui" is defined

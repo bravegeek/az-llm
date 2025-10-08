@@ -1,0 +1,404 @@
+# OpenAI API Contract
+# Defines the API contract between Open WebUI and LiteLLM
+# Based on OpenAI API specification (LiteLLM provides OpenAI-compatible interface)
+
+openapi: 3.0.3
+info:
+  title: OpenAI-Compatible API (LiteLLM)
+  description: API contract for chat completions and image generation exposed by LiteLLM proxy
+  version: 1.0.0
+  contact:
+    name: LiteLLM Documentation
+    url: https://docs.litellm.ai
+
+servers:
+  - url: http://litellm:4000/v1
+    description: LiteLLM proxy (internal Docker network)
+  - url: http://localhost:4000/v1
+    description: LiteLLM proxy (host access)
+
+paths:
+  /chat/completions:
+    post:
+      summary: Create chat completion
+      description: Sends a chat request to Azure OpenAI via LiteLLM, returns streaming or complete response
+      operationId: createChatCompletion
+      tags:
+        - Chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+            examples:
+              simpleChat:
+                summary: Simple chat request
+                value:
+                  model: gpt-4
+                  messages:
+                    - role: user
+                      content: "What is the capital of France?"
+                  stream: true
+
+      responses:
+        '200':
+          description: Successful chat completion (streaming or complete)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionChunk'
+        '400':
+          description: Invalid request (prompt too long, invalid model, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded (Azure OpenAI quota)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Azure OpenAI service error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /images/generations:
+    post:
+      summary: Generate image
+      description: Creates an image from a text prompt using DALL-E via Azure OpenAI
+      operationId: createImageGeneration
+      tags:
+        - Images
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageGenerationRequest'
+            examples:
+              dalleRequest:
+                summary: DALL-E 3 image generation
+                value:
+                  model: dall-e-3
+                  prompt: "A futuristic city with flying cars at sunset"
+                  size: "1024x1024"
+                  quality: "standard"
+                  n: 1
+
+      responses:
+        '200':
+          description: Image generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageGenerationResponse'
+        '400':
+          description: Invalid request (content policy violation, invalid prompt)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /models:
+    get:
+      summary: List available models
+      description: Returns list of models configured in LiteLLM
+      operationId: listModels
+      tags:
+        - Models
+      responses:
+        '200':
+          description: List of models
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelListResponse'
+
+components:
+  schemas:
+    ChatCompletionRequest:
+      type: object
+      required:
+        - model
+        - messages
+      properties:
+        model:
+          type: string
+          example: gpt-4
+          description: Model name (from litellm_config.yaml)
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+          minItems: 1
+          description: Conversation history
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 1
+          example: 0.7
+        max_tokens:
+          type: integer
+          minimum: 1
+          example: 4096
+        stream:
+          type: boolean
+          default: false
+          description: Enable streaming responses
+        top_p:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 1
+        frequency_penalty:
+          type: number
+          minimum: -2
+          maximum: 2
+          default: 0
+        presence_penalty:
+          type: number
+          minimum: -2
+          maximum: 2
+          default: 0
+
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+          description: Message sender role
+        content:
+          type: string
+          maxLength: 32000
+          description: Message text
+        name:
+          type: string
+          description: Optional name of the participant
+
+    ChatCompletionResponse:
+      type: object
+      required:
+        - id
+        - object
+        - created
+        - model
+        - choices
+        - usage
+      properties:
+        id:
+          type: string
+          example: chatcmpl-abc123
+        object:
+          type: string
+          enum: [chat.completion]
+        created:
+          type: integer
+          example: 1677652288
+        model:
+          type: string
+          example: gpt-4
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatCompletionChoice'
+        usage:
+          $ref: '#/components/schemas/Usage'
+
+    ChatCompletionChoice:
+      type: object
+      required:
+        - index
+        - message
+        - finish_reason
+      properties:
+        index:
+          type: integer
+          example: 0
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+        finish_reason:
+          type: string
+          enum: [stop, length, content_filter, null]
+
+    ChatCompletionChunk:
+      type: object
+      description: Server-sent event for streaming responses
+      required:
+        - id
+        - object
+        - created
+        - model
+        - choices
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          enum: [chat.completion.chunk]
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              delta:
+                type: object
+                properties:
+                  role:
+                    type: string
+                  content:
+                    type: string
+              finish_reason:
+                type: string
+
+    ImageGenerationRequest:
+      type: object
+      required:
+        - model
+        - prompt
+      properties:
+        model:
+          type: string
+          enum: [dall-e-3, dall-e-2]
+          example: dall-e-3
+        prompt:
+          type: string
+          maxLength: 4000
+          example: "A futuristic city"
+        size:
+          type: string
+          enum: ["1024x1024", "1024x1792", "1792x1024", "256x256", "512x512"]
+          default: "1024x1024"
+        quality:
+          type: string
+          enum: [standard, hd]
+          default: standard
+        n:
+          type: integer
+          minimum: 1
+          maximum: 1
+          default: 1
+          description: Number of images (always 1 for DALL-E 3)
+
+    ImageGenerationResponse:
+      type: object
+      required:
+        - created
+        - data
+      properties:
+        created:
+          type: integer
+          example: 1677652288
+        data:
+          type: array
+          items:
+            type: object
+            required:
+              - url
+            properties:
+              url:
+                type: string
+                format: uri
+                example: "https://oaidalleapiprodscus.blob.core.windows.net/..."
+              revised_prompt:
+                type: string
+                description: DALL-E 3 may revise prompts for safety
+
+    ModelListResponse:
+      type: object
+      required:
+        - object
+        - data
+      properties:
+        object:
+          type: string
+          enum: [list]
+        data:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - object
+            properties:
+              id:
+                type: string
+                example: gpt-4
+              object:
+                type: string
+                enum: [model]
+              created:
+                type: integer
+              owned_by:
+                type: string
+
+    Usage:
+      type: object
+      required:
+        - prompt_tokens
+        - completion_tokens
+        - total_tokens
+      properties:
+        prompt_tokens:
+          type: integer
+          example: 10
+        completion_tokens:
+          type: integer
+          example: 25
+        total_tokens:
+          type: integer
+          example: 35
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - message
+            - type
+          properties:
+            message:
+              type: string
+              example: "Rate limit exceeded"
+            type:
+              type: string
+              example: "rate_limit_error"
+            code:
+              type: string
+              example: "429"
+
+# Contract Tests (to be implemented in Phase 3)
+# TEST 1: Send chat request, verify 200 response with choices
+# TEST 2: Send streaming chat request, verify SSE chunks received
+# TEST 3: Send invalid model name, verify 400 error
+# TEST 4: Send image generation request, verify URL returned
+# TEST 5: Send prompt exceeding max length, verify 400 error
+# TEST 6: List models, verify configured models appear
+# TEST 7: Verify usage object includes token counts

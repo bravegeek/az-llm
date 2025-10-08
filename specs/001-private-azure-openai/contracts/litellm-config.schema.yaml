@@ -1,0 +1,175 @@
+# LiteLLM Configuration Schema
+# Defines the expected structure for litellm_config.yaml
+
+openapi: 3.0.3
+info:
+  title: LiteLLM Configuration Schema
+  description: Schema for litellm_config.yaml defining Azure OpenAI model mappings
+  version: 1.0.0
+
+components:
+  schemas:
+    LiteLLMConfigFile:
+      type: object
+      required:
+        - model_list
+      properties:
+        model_list:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelConfiguration'
+          minItems: 1
+          description: List of model configurations for Azure OpenAI
+
+    ModelConfiguration:
+      type: object
+      required:
+        - model_name
+        - litellm_params
+      properties:
+        model_name:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+          example: 'gpt-4'
+          description: Display name shown in Open WebUI dropdown
+
+        litellm_params:
+          $ref: '#/components/schemas/LiteLLMParams'
+
+    LiteLLMParams:
+      type: object
+      required:
+        - model
+        - api_base
+        - api_key
+        - api_version
+      properties:
+        model:
+          type: string
+          pattern: '^azure/.*'
+          example: 'azure/gpt-4-turbo'
+          description: Azure model path (must start with "azure/")
+
+        api_base:
+          type: string
+          format: uri
+          pattern: '^https://.*\.openai\.azure\.com$'
+          example: 'https://your-resource.openai.azure.com'
+          description: Azure OpenAI endpoint URL
+
+        api_key:
+          type: string
+          pattern: '^(os\.environ/|env::).*|\$\{.*\}|[a-f0-9]{32}$'
+          example: 'os.environ/AZURE_API_KEY'
+          description: API key (literal or environment variable reference)
+
+        api_version:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}(-preview)?$'
+          example: '2024-02-01'
+          description: Azure OpenAI API version (YYYY-MM-DD format)
+
+        timeout:
+          type: integer
+          minimum: 60
+          maximum: 600
+          default: 600
+          example: 600
+          description: Request timeout in seconds (DALL-E needs 120+)
+
+        max_tokens:
+          type: integer
+          minimum: 1
+          maximum: 128000
+          example: 4096
+          description: Maximum tokens in response (model-dependent)
+
+# Validation Examples
+
+examples:
+  validLiteLLMConfig:
+    summary: Valid litellm_config.yaml with GPT and DALL-E models
+    value:
+      model_list:
+        - model_name: gpt-4
+          litellm_params:
+            model: azure/gpt-4-turbo
+            api_base: https://your-resource.openai.azure.com
+            api_key: os.environ/AZURE_API_KEY
+            api_version: "2024-02-01"
+            timeout: 600
+
+        - model_name: gpt-35-turbo
+          litellm_params:
+            model: azure/gpt-35-turbo
+            api_base: https://your-resource.openai.azure.com
+            api_key: os.environ/AZURE_API_KEY
+            api_version: "2024-02-01"
+            timeout: 600
+
+        - model_name: dall-e-3
+          litellm_params:
+            model: azure/dall-e-3
+            api_base: https://your-resource.openai.azure.com
+            api_key: os.environ/AZURE_API_KEY
+            api_version: "2024-02-01"
+            timeout: 600
+
+  configWithEnvVarSubstitution:
+    summary: Using ${VAR} syntax for environment variables
+    value:
+      model_list:
+        - model_name: gpt-4
+          litellm_params:
+            model: azure/gpt-4-turbo
+            api_base: ${AZURE_API_BASE}
+            api_key: ${AZURE_API_KEY}
+            api_version: "2024-02-01"
+
+# Supported Azure OpenAI Models
+
+supportedModels:
+  chatModels:
+    - name: gpt-4
+      azurePath: azure/gpt-4-turbo
+      description: GPT-4 Turbo (most capable)
+      maxTokens: 128000
+      costPer1kInputTokens: 0.01
+      costPer1kOutputTokens: 0.03
+
+    - name: gpt-4o
+      azurePath: azure/gpt-4o
+      description: GPT-4 Omni (multimodal)
+      maxTokens: 128000
+      costPer1kInputTokens: 0.005
+      costPer1kOutputTokens: 0.015
+
+    - name: gpt-35-turbo
+      azurePath: azure/gpt-35-turbo
+      description: GPT-3.5 Turbo (fast and cost-effective)
+      maxTokens: 16000
+      costPer1kInputTokens: 0.0005
+      costPer1kOutputTokens: 0.0015
+
+  imageModels:
+    - name: dall-e-3
+      azurePath: azure/dall-e-3
+      description: DALL-E 3 (high-quality images)
+      costPerImage: 0.04
+      resolutions: ["1024x1024", "1024x1792", "1792x1024"]
+      quality: ["standard", "hd"]
+
+    - name: dall-e-2
+      azurePath: azure/dall-e-2
+      description: DALL-E 2 (legacy)
+      costPerImage: 0.02
+      resolutions: ["256x256", "512x512", "1024x1024"]
+
+# Contract Tests (to be implemented in Phase 3)
+# TEST 1: Validate litellm_config.yaml against this schema
+# TEST 2: Ensure at least one chat model (gpt-*) is configured
+# TEST 3: Ensure all model names are unique
+# TEST 4: Ensure all api_base URLs use HTTPS
+# TEST 5: Ensure api_version is 2024-02-01 or later
+# TEST 6: Ensure api_key references environment variable (not hardcoded)
+# TEST 7: Load config and verify LiteLLM starts without errors
