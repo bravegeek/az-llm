@@ -28,23 +28,23 @@ Deploy Open WebUI and LiteLLM in Docker containers, connecting to Azure OpenAI S
 
 ## Phase 3.1: Setup
 
-- [ ] **T001** Create `.gitignore` file in repository root
+- [X] **T001** Create `.gitignore` file in repository root
   **Path**: `/home/greg/dev/az-llm/.gitignore`
   **Description**: Exclude `.env`, Docker volumes, IDE files, and OS-specific files from version control
   **Dependencies**: None
 
-- [ ] **T002** Create `.env.example` template in repository root
+- [X] **T002** Create `.env.example` template in repository root
   **Path**: `/home/greg/dev/az-llm/.env.example`
   **Description**: Provide template with placeholder values for `AZURE_API_KEY` and `AZURE_API_BASE`
   **Dependencies**: None
 
-- [ ] **T003** Create `docker-compose.yml` in repository root
+- [X] **T003** Create `docker-compose.yml` in repository root
   **Path**: `/home/greg/dev/az-llm/docker-compose.yml`
   **Description**: Define services for LiteLLM and Open WebUI containers, named volumes, port mappings, and environment variables per contract schema
   **Reference**: `/home/greg/dev/az-llm/specs/001-private-azure-openai/contracts/docker-compose.schema.yaml`
   **Dependencies**: None
 
-- [ ] **T004** Create `litellm_config.yaml` in repository root
+- [X] **T004** Create `litellm_config.yaml` in repository root
   **Path**: `/home/greg/dev/az-llm/litellm_config.yaml`
   **Description**: Define model configurations for GPT-4, GPT-3.5-turbo, and DALL-E 3 per contract schema
   **Reference**: `/home/greg/dev/az-llm/specs/001-private-azure-openai/contracts/litellm-config.schema.yaml`
@@ -56,21 +56,21 @@ Deploy Open WebUI and LiteLLM in Docker containers, connecting to Azure OpenAI S
 
 **CRITICAL**: These validation tasks ensure configuration files are correct before deployment
 
-- [ ] **T005** [P] Validate `docker-compose.yml` structure
+- [X] **T005** [P] Validate `docker-compose.yml` structure
   **Path**: `/home/greg/dev/az-llm/docker-compose.yml`
   **Description**: Verify file matches schema - check services (litellm, openwebui), volumes (open-webui), port mappings, environment variables
   **Validation**: Run `docker-compose config` to check syntax, verify output matches expected structure
   **Reference**: `/home/greg/dev/az-llm/specs/001-private-azure-openai/contracts/docker-compose.schema.yaml`
   **Dependencies**: T003
 
-- [ ] **T006** [P] Validate `litellm_config.yaml` structure
+- [X] **T006** [P] Validate `litellm_config.yaml` structure
   **Path**: `/home/greg/dev/az-llm/litellm_config.yaml`
   **Description**: Verify file matches schema - check model_list has 3+ models, all use `azure/` prefix, api_version is `2024-02-01`, api_key uses env var reference
   **Validation**: Parse YAML and check all required fields present
   **Reference**: `/home/greg/dev/az-llm/specs/001-private-azure-openai/contracts/litellm-config.schema.yaml`
   **Dependencies**: T004
 
-- [ ] **T007** [P] Validate `.env.example` template
+- [X] **T007** [P] Validate `.env.example` template
   **Path**: `/home/greg/dev/az-llm/.env.example`
   **Description**: Verify template includes AZURE_API_KEY and AZURE_API_BASE with placeholder values (not real credentials)
   **Validation**: Check file contains required variables with example values
@@ -149,26 +149,26 @@ Deploy Open WebUI and LiteLLM in Docker containers, connecting to Azure OpenAI S
 
 ## Phase 3.4: Documentation
 
-- [ ] **T017** [P] Create `README.md` in repository root
+- [X] **T017** [P] Create `README.md` in repository root
   **Path**: `/home/greg/dev/az-llm/README.md`
   **Description**: Main project documentation with overview, quick start (5-minute setup), architecture diagram, prerequisites, and links to detailed docs
   **Content**: Project summary, technology stack, quick start commands, link to docs/SETUP.md
   **Dependencies**: None
 
-- [ ] **T018** [P] Create `docs/` directory and `SETUP.md`
+- [X] **T018** [P] Create `docs/` directory and `SETUP.md`
   **Path**: `/home/greg/dev/az-llm/docs/SETUP.md`
   **Description**: Detailed setup guide with step-by-step instructions, Azure OpenAI provisioning, credential configuration, first-time deployment
   **Content**: Prerequisites checklist, Azure setup, .env configuration, container deployment, verification steps
   **Dependencies**: None
 
-- [ ] **T019** [P] Create `docs/TROUBLESHOOTING.md`
+- [X] **T019** [P] Create `docs/TROUBLESHOOTING.md`
   **Path**: `/home/greg/dev/az-llm/docs/TROUBLESHOOTING.md`
   **Description**: Common issues and solutions - port conflicts, invalid credentials, model not found, quota errors, data loss
   **Content**: Issue table from quickstart.md lines 333-340, with symptoms and solutions
   **Reference**: `/home/greg/dev/az-llm/specs/001-private-azure-openai/quickstart.md` lines 333-340
   **Dependencies**: None
 
-- [ ] **T020** [P] Create `docs/USAGE.md`
+- [X] **T020** [P] Create `docs/USAGE.md`
   **Path**: `/home/greg/dev/az-llm/docs/USAGE.md`
   **Description**: User guide for Open WebUI features - chat interface, model selection, conversation management, image generation, usage dashboard
   **Content**: Feature walkthroughs, screenshots (placeholders), tips for effective prompts, cost monitoring

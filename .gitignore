@@ -96,3 +96,10 @@ logs
 # Azure
 *.publishsettings
 *.azurePubxml
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Docker volumes and data persistence
+open-webui/
