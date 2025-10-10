@@ -43,19 +43,19 @@ Infrastructure project at repository root:
 
 ## Phase 3.1: Setup
 
-- [ ] **T001** Create infrastructure project structure
+- [x] **T001** Create infrastructure project structure
   - Create directories: `infra/`, `infra/modules/`, `infra/parameters/`, `infra/scripts/`, `tests/bicep/`, `tests/integration/`
   - **Files affected**: Repository root
   - **Dependencies**: None
 
-- [ ] **T002** Install and verify Azure CLI and Bicep CLI
+- [x] **T002** Install and verify Azure CLI and Bicep CLI
   - Verify Azure CLI version (≥2.50.0)
   - Verify Bicep CLI version (≥0.20.0)
   - Create version check script in `infra/scripts/check-prerequisites.sh`
   - **Files affected**: `infra/scripts/check-prerequisites.sh`
   - **Dependencies**: T001
 
-- [ ] **T003** [P] Create .gitignore for infrastructure artifacts
+- [x] **T003** [P] Create .gitignore for infrastructure artifacts
   - Ignore: `.azure/`, `*.bicepparam.json`, deployment logs
   - **Files affected**: `infra/.gitignore`
   - **Dependencies**: T001
@@ -66,42 +66,42 @@ Infrastructure project at repository root:
 
 **CRITICAL: These tests MUST be written and MUST FAIL before ANY implementation**
 
-- [ ] **T004** [P] Bicep linter test in tests/bicep/linter.test.sh
+- [x] **T004** [P] Bicep linter test in tests/bicep/linter.test.sh
   - Test validates all `.bicep` files in `infra/` pass `az bicep lint`
   - Exit code 1 if linting fails
   - Expected result: FAIL (no Bicep files exist yet)
   - **Files affected**: `tests/bicep/linter.test.sh`
   - **Dependencies**: T002
 
-- [ ] **T005** [P] Bicep build test in tests/bicep/build.test.sh
+- [x] **T005** [P] Bicep build test in tests/bicep/build.test.sh
   - Test validates `infra/main.bicep` compiles without errors
   - Exit code 1 if build fails
   - Expected result: FAIL (main.bicep doesn't exist yet)
   - **Files affected**: `tests/bicep/build.test.sh`
   - **Dependencies**: T002
 
-- [ ] **T006** [P] Deployment parameter validation test in tests/bicep/parameter-validation.test.sh
+- [x] **T006** [P] Deployment parameter validation test in tests/bicep/parameter-validation.test.sh
   - Test validates parameter files against OpenAPI schema in `contracts/bicep-deployment.yaml`
   - Checks: required fields, enum values, format patterns
   - Expected result: FAIL (parameter files don't exist yet)
   - **Files affected**: `tests/bicep/parameter-validation.test.sh`
   - **Dependencies**: T002
 
-- [ ] **T007** [P] Azure Policy compliance test in tests/bicep/policy.test.sh
+- [x] **T007** [P] Azure Policy compliance test in tests/bicep/policy.test.sh
   - Test validates deployment meets security requirements (TLS 1.2, managed identity, encryption)
   - Uses `az deployment group validate` with policy checks
   - Expected result: FAIL (no templates exist yet)
   - **Files affected**: `tests/bicep/policy.test.sh`
   - **Dependencies**: T002
 
-- [ ] **T008** [P] Deployment validation test in tests/bicep/deployment.test.sh
+- [x] **T008** [P] Deployment validation test in tests/bicep/deployment.test.sh
   - Test validates `infra/main.bicep` can deploy successfully (what-if mode)
   - Validates all 3 environment parameter files (dev, staging, prod)
   - Expected result: FAIL (templates don't exist yet)
   - **Files affected**: `tests/bicep/deployment.test.sh`
   - **Dependencies**: T002
 
-- [ ] **T009** [P] Integration test for fresh deployment in tests/integration/fresh-deployment.test.sh
+- [x] **T009** [P] Integration test for fresh deployment in tests/integration/fresh-deployment.test.sh
   - Test scenario: Deploy to empty resource group
   - Validates: All resources created, outputs present, managed identity configured
   - Uses quickstart.md Scenario 1 as reference
@@ -109,7 +109,7 @@ Infrastructure project at repository root:
   - **Files affected**: `tests/integration/fresh-deployment.test.sh`
   - **Dependencies**: T002
 
-- [ ] **T010** [P] Integration test for update deployment in tests/integration/update-deployment.test.sh
+- [x] **T010** [P] Integration test for update deployment in tests/integration/update-deployment.test.sh
   - Test scenario: Update existing infrastructure (change OpenAI capacity)
   - Validates: Incremental update, no resource recreation, outputs updated
   - Uses quickstart.md Scenario 2 as reference
@@ -117,7 +117,7 @@ Infrastructure project at repository root:
   - **Files affected**: `tests/integration/update-deployment.test.sh`
   - **Dependencies**: T002
 
-- [ ] **T011** [P] Integration test for multi-environment deployment in tests/integration/multi-environment.test.sh
+- [x] **T011** [P] Integration test for multi-environment deployment in tests/integration/multi-environment.test.sh
   - Test scenario: Deploy dev, staging, prod with same SKUs
   - Validates: Environment isolation, consistent configuration, correct tags
   - Uses quickstart.md Scenario 3 as reference
@@ -125,7 +125,7 @@ Infrastructure project at repository root:
   - **Files affected**: `tests/integration/multi-environment.test.sh`
   - **Dependencies**: T002
 
-- [ ] **T012** [P] Integration test for security validation in tests/integration/security-validation.test.sh
+- [x] **T012** [P] Integration test for security validation in tests/integration/security-validation.test.sh
   - Test scenario: Verify managed identity, role assignments, no secrets
   - Validates: Hybrid networking (public OpenAI, VNet integration), no API keys in config
   - Uses quickstart.md Scenario 4 as reference
@@ -139,7 +139,7 @@ Infrastructure project at repository root:
 
 ### Bicep Modules (Parallel - Different Files)
 
-- [ ] **T013** [P] Virtual Network module in infra/modules/vnet.bicep
+- [x] **T013** [P] Virtual Network module in infra/modules/vnet.bicep
   - Parameters: `vnetName`, `location`, `addressPrefix`, `tags`
   - Resources: Virtual Network, App Service integration subnet (delegated to Microsoft.Web/serverFarms)
   - Outputs: `vnetId`, `appServiceSubnetId`
@@ -147,7 +147,7 @@ Infrastructure project at repository root:
   - **Files affected**: `infra/modules/vnet.bicep`
   - **Dependencies**: T004, T005 (tests failing)
 
-- [ ] **T014** [P] Azure OpenAI Service module in infra/modules/openai.bicep
+- [x] **T014** [P] Azure OpenAI Service module in infra/modules/openai.bicep
   - Parameters: `openAiName`, `location`, `sku`, `modelDeployments`, `tags`
   - Resources: Cognitive Services account (kind: OpenAI), 3 model deployments (GPT-4o, GPT-3.5-turbo, DALL-E 3)
   - Properties: `publicNetworkAccess: 'Enabled'` (hybrid networking)
@@ -156,7 +156,7 @@ Infrastructure project at repository root:
   - **Files affected**: `infra/modules/openai.bicep`
   - **Dependencies**: T004, T005 (tests failing)
 
-- [ ] **T015** [P] App Service module in infra/modules/appservice.bicep
+- [x] **T015** [P] App Service module in infra/modules/appservice.bicep
   - Parameters: `appServiceName`, `location`, `sku`, `vnetSubnetId`, `tags`
   - Resources: App Service Plan, App Service with system-assigned managed identity
   - Properties: VNet integration, HTTPS only, TLS 1.2 minimum
@@ -165,7 +165,7 @@ Infrastructure project at repository root:
   - **Files affected**: `infra/modules/appservice.bicep`
   - **Dependencies**: T004, T005 (tests failing)
 
-- [ ] **T016** [P] Static Web App module in infra/modules/staticwebapp.bicep
+- [x] **T016** [P] Static Web App module in infra/modules/staticwebapp.bicep
   - Parameters: `swaName`, `location`, `sku`, `tags`
   - Resources: Static Web App (public, no VNet integration)
   - Outputs: `swaUrl`, `swaName`
@@ -173,7 +173,7 @@ Infrastructure project at repository root:
   - **Files affected**: `infra/modules/staticwebapp.bicep`
   - **Dependencies**: T004, T005 (tests failing)
 
-- [ ] **T017** [P] Application Insights module in infra/modules/monitoring.bicep
+- [x] **T017** [P] Application Insights module in infra/modules/monitoring.bicep
   - Parameters: `appInsightsName`, `location`, `retentionInDays`, `tags`
   - Resources: Log Analytics Workspace, Application Insights (workspace-based)
   - Outputs: `appInsightsConnectionString`, `appInsightsInstrumentationKey`, `workspaceId`
@@ -183,7 +183,7 @@ Infrastructure project at repository root:
 
 ### Main Orchestrator (Sequential - Depends on Modules)
 
-- [ ] **T018** Main orchestration template in infra/main.bicep
+- [x] **T018** Main orchestration template in infra/main.bicep
   - Parameters: `environment`, `location`, `projectName`, `appServiceSku`, `openAiModels`, `tags`
   - Modules: vnet, openai, appservice, staticwebapp, monitoring (with dependencies)
   - Resource: Role assignment (App Service managed identity → OpenAI "Cognitive Services OpenAI User")
@@ -194,14 +194,14 @@ Infrastructure project at repository root:
 
 ### Deployment Scripts
 
-- [ ] **T019** Deployment orchestration script in infra/scripts/deploy.sh
+- [x] **T019** Deployment orchestration script in infra/scripts/deploy.sh
   - Accepts: `--environment <dev|staging|prod>` flag
   - Steps: Validate parameters, run linter, create resource group, deploy template
   - Error handling: Check deployment status, display errors, exit with code 1 on failure
   - **Files affected**: `infra/scripts/deploy.sh`
   - **Dependencies**: T018
 
-- [ ] **T020** Deployment validation script in infra/scripts/validate.sh
+- [x] **T020** Deployment validation script in infra/scripts/validate.sh
   - Accepts: `--environment <dev|staging|prod>` flag
   - Steps: Run linter, validate parameters, run what-if deployment
   - Output: Display changes (create/modify/delete resources)
@@ -214,7 +214,7 @@ Infrastructure project at repository root:
 
 ### Environment Parameter Files (Parallel - Different Files)
 
-- [ ] **T021** [P] Development environment parameters in infra/parameters/dev.bicepparam
+- [x] **T021** [P] Development environment parameters in infra/parameters/dev.bicepparam
   - Using syntax: `using '../main.bicep'`
   - Parameters: `environment: 'dev'`, `location: 'eastus'`, `projectName: 'az-llm'`, `appServiceSku: { name: 'B1', tier: 'Basic' }`
   - OpenAI models: GPT-4o (10 TPM), GPT-3.5-turbo (10 TPM), DALL-E 3 (1 TPM)
@@ -222,13 +222,13 @@ Infrastructure project at repository root:
   - **Files affected**: `infra/parameters/dev.bicepparam`
   - **Dependencies**: T018
 
-- [ ] **T022** [P] Staging environment parameters in infra/parameters/staging.bicepparam
+- [x] **T022** [P] Staging environment parameters in infra/parameters/staging.bicepparam
   - Same structure as dev.bicepparam with `environment: 'staging'`
   - Same SKUs (per clarification: consistent across environments)
   - **Files affected**: `infra/parameters/staging.bicepparam`
   - **Dependencies**: T018
 
-- [ ] **T023** [P] Production environment parameters in infra/parameters/prod.bicepparam
+- [x] **T023** [P] Production environment parameters in infra/parameters/prod.bicepparam
   - Same structure as dev.bicepparam with `environment: 'prod'`
   - Same SKUs (per clarification: consistent across environments)
   - **Files affected**: `infra/parameters/prod.bicepparam`
@@ -236,7 +236,7 @@ Infrastructure project at repository root:
 
 ### Test Runner
 
-- [ ] **T024** Test runner script in tests/run-all-tests.sh
+- [x] **T024** Test runner script in tests/run-all-tests.sh
   - Runs all tests in sequence: linter → build → parameter validation → policy → deployment
   - Displays pass/fail for each test
   - Exit code: 0 if all pass, 1 if any fail
