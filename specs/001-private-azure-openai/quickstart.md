@@ -47,7 +47,7 @@ AZURE_API_BASE=https://your-resource.openai.azure.com
 
 ### Step 2: Configure Models
 
-Edit `litellm_config.yaml` to match your Azure OpenAI deployments:
+Edit `docker/litellm/config.yaml` to match your Azure OpenAI deployments:
 
 ```yaml
 model_list:
@@ -64,18 +64,21 @@ model_list:
 ### Step 3: Start Containers
 
 ```bash
-# Start Open WebUI and LiteLLM
-docker-compose up -d
+# Using helper script (recommended)
+./docker/scripts/start.sh
+
+# Or using docker compose directly
+docker compose up -d
 
 # Verify containers are running
-docker-compose ps
+docker compose ps
 ```
 
 **Expected output:**
 ```
-NAME        IMAGE                                    STATUS
-litellm     ghcr.io/berriai/litellm:main-latest      Up 10 seconds
-openwebui   ghcr.io/open-webui/open-webui:main       Up 10 seconds
+NAME               IMAGE                                    STATUS
+az-llm-litellm     ghcr.io/berriai/litellm:main-latest      Up 10 seconds (healthy)
+az-llm-openwebui   ghcr.io/open-webui/open-webui:main       Up 10 seconds
 ```
 
 ### Step 4: Access Open WebUI
@@ -105,14 +108,21 @@ openwebui   ghcr.io/open-webui/open-webui:main       Up 10 seconds
 
 ```bash
 # Check container status
-docker-compose ps
+docker compose ps
 
 # Check container logs
-docker-compose logs litellm
-docker-compose logs openwebui
+docker compose logs litellm
+docker compose logs openwebui
+
+# Or use helper script
+./docker/scripts/logs.sh litellm
+./docker/scripts/logs.sh openwebui
+
+# Check health status
+./docker/scripts/health.sh
 
 # Verify LiteLLM loaded config
-docker-compose logs litellm | grep "model_list"
+docker compose logs litellm | grep "model_list"
 ```
 
 **Success Criteria**:
@@ -123,7 +133,9 @@ docker-compose logs litellm | grep "model_list"
 
 **Troubleshooting**:
 - If LiteLLM fails: Check `.env` file has correct `AZURE_API_KEY` and `AZURE_API_BASE`
+- If config not found: Verify `docker/litellm/config.yaml` exists
 - If Open WebUI fails: Check port 3000 is not in use (`lsof -i :3000`)
+- For detailed diagnostics: `./docker/scripts/health.sh`
 
 ---
 
@@ -343,19 +355,21 @@ Error: Rate limit exceeded. Please try again later.
 **Steps**:
 ```bash
 # Stop containers (keep data)
-docker-compose stop
+docker compose stop
 
 # Stop and remove containers (keep data)
-docker-compose down
+docker compose down
+# Or use helper script
+./docker/scripts/stop.sh
 
 # Remove containers AND data (DESTRUCTIVE)
-docker-compose down -v
+docker compose down -v
 ```
 
 **Success Criteria**:
-- `docker-compose stop`: Containers stopped, data preserved
-- `docker-compose down`: Containers removed, data preserved
-- `docker-compose down -v`: Everything removed (clean slate)
+- `docker compose stop`: Containers stopped, data preserved
+- `docker compose down`: Containers removed, data preserved
+- `docker compose down -v`: Everything removed (clean slate)
 
 ---
 
@@ -365,7 +379,8 @@ docker-compose down -v
 |-------|---------|----------|
 | Port conflict | `Error: port is already allocated` | Change host port in docker-compose.yml (e.g., `3001:8080`) |
 | Invalid credentials | `Authentication failed` | Verify `.env` has correct `AZURE_API_KEY` |
-| Model not found | `Model 'gpt-4' not found` | Check deployment name in litellm_config.yaml matches Azure |
+| Model not found | `Model 'gpt-4' not found` | Check deployment name in `docker/litellm/config.yaml` matches Azure |
+| Config not found | `FileNotFoundError` | Verify `docker/litellm/config.yaml` exists |
 | No response | Request hangs | Check internet connection, verify Azure endpoint reachable |
 | Quota exceeded | 429 error | Wait for Azure quota reset, increase quota in Azure Portal |
 | Data loss on restart | Conversations gone | Ensure `open-webui` named volume in docker-compose.yml |
@@ -390,11 +405,13 @@ docker-compose down -v
 
 After completing quickstart:
 
-1. **Customize Models**: Edit litellm_config.yaml to add/remove models
-2. **Enable HTTPS**: Add reverse proxy (Nginx, Caddy) for production
-3. **Backup Data**: Schedule Docker volume backups (`open-webui` volume)
-4. **Monitor Costs**: Check LiteLLM dashboard and Azure Cost Management regularly
-5. **Explore Features**: Try Open WebUI's advanced features (RAG, tools, personas)
+1. **Customize Models**: Edit `docker/litellm/config.yaml` to add/remove models
+2. **Review Docker Setup**: See [docker/docs/README.md](../../docker/docs/README.md) for detailed Docker documentation
+3. **Enable HTTPS**: Add reverse proxy (Nginx, Caddy) for production
+4. **Backup Data**: Schedule Docker volume backups (`open-webui` volume)
+5. **Monitor Costs**: Check LiteLLM dashboard and Azure Cost Management regularly
+6. **Explore Features**: Try Open WebUI's advanced features (RAG, tools, personas)
+7. **Azure Deployment**: See [specs/002-azure-infrastructure-as](../002-azure-infrastructure-as/) for production deployment
 
 ---
 

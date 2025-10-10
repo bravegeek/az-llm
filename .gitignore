@@ -99,7 +99,15 @@ logs
 
 # Docker
 docker-compose.override.yml
+docker-compose.*.backup
+*.backup
 .docker/
 
 # Docker volumes and data persistence
 open-webui/
+docker/volumes/
+docker/logs/
+
+# Docker local config overrides
+docker/*/local.yaml
+docker/*/local.yml

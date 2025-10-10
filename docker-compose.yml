@@ -7,7 +7,7 @@ services:
     ports:
       - "127.0.0.1:4000:4000"  # Bind to localhost for security
     volumes:
-      - ./litellm_config.yaml:/app/config.yaml:ro  # Read-only mount
+      - ./docker/litellm/config.yaml:/app/config.yaml:ro  # Read-only mount
     env_file:
       - .env  # Store secrets in .env file (see .env.example)
     command: --config /app/config.yaml
