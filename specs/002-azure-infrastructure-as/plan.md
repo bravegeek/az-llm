@@ -31,7 +31,7 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-Create Azure infrastructure as code using Bicep to provision and configure Azure OpenAI Service, App Service, Static Web App, and Application Insights. Infrastructure will support multi-environment deployments with private networking, managed identity authentication, and minimal resource tagging for cost tracking.
+Create Azure infrastructure as code using Bicep to provision and configure Azure OpenAI Service, App Service, Static Web App, and Application Insights. Infrastructure will support multi-environment deployments with hybrid networking, managed identity authentication, and minimal resource tagging for cost tracking.
 
 ## Technical Context
 **Language/Version**: Bicep (latest) with Azure CLI

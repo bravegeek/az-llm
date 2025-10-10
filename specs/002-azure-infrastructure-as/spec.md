@@ -98,11 +98,11 @@ As a **DevOps engineer or developer**, I need to provision and configure all req
 - **FR-011**: System MUST enable hybrid networking with public Static Web App frontend and secure backend services with VNet integration
 - **FR-012**: System MUST apply minimal resource tags including Environment and Project for cost tracking
 - **FR-013**: System MUST output connection information and resource identifiers needed by application code after successful deployment
-- **FR-014**: System MUST validate [NEEDS CLARIFICATION: are there specific compliance requirements (e.g., encryption at rest, network isolation, audit logging)?]
-- **FR-015**: System MUST support [NEEDS CLARIFICATION: what is the deployment orchestration approach - single template, modular templates, or resource-specific templates?]
+- **FR-014**: System MUST enable default Azure compliance settings including encryption at rest, TLS 1.2+ for all connections, and audit logging via Azure Activity Log
+- **FR-015**: System MUST support modular template orchestration with a single main.bicep file that references resource-specific modules
 - **FR-016**: Infrastructure definitions MUST be version-controlled and support repeatable deployments
-- **FR-017**: System MUST configure [NEEDS CLARIFICATION: what backup and disaster recovery settings are required?]
-- **FR-018**: System MUST enable diagnostic settings for [NEEDS CLARIFICATION: which resources should send logs to Application Insights or Log Analytics?]
+- **FR-017**: Infrastructure definitions MUST support disaster recovery through re-deployment from version-controlled templates (stateless infrastructure approach)
+- **FR-018**: System MUST enable diagnostic settings for all compute resources (App Service, Static Web App) to send logs and metrics to Application Insights
 
 ### Key Entities
 - **Infrastructure Environment**: Represents a deployment target (development, staging, production) with environment-specific resource configurations and consistent SKU settings across all environments
@@ -127,7 +127,7 @@ As a **DevOps engineer or developer**, I need to provision and configure all req
 - [x] All mandatory sections completed
 
 ### Requirement Completeness
-- [ ] No [NEEDS CLARIFICATION] markers remain (4 deferred items)
+- [x] No [NEEDS CLARIFICATION] markers remain (all clarifications resolved)
 - [x] Requirements are testable and unambiguous (clarified items)
 - [x] Success criteria are measurable
 - [x] Scope is clearly bounded
@@ -144,6 +144,6 @@ As a **DevOps engineer or developer**, I need to provision and configure all req
 - [x] Requirements generated
 - [x] Entities identified
 - [x] Clarification session completed (5 questions answered)
-- [ ] Review checklist passed (4 deferred items remain)
+- [x] Review checklist passed (all items complete)
 
 ---
