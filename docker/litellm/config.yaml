@@ -1,24 +1,35 @@
 model_list:
-  - model_name: gpt-4
+  - model_name: DeepSeek-V3.1
     litellm_params:
-      model: azure/gpt-4-turbo
-      api_base: ${AZURE_API_BASE}
+      model: azure/DeepSeek-V3.1
+      api_base: ${AZURE_API_BASE}/openai
       api_key: ${AZURE_API_KEY}
-      api_version: "2024-02-01"
+      api_version: "2024-10-01-preview"
       timeout: 600
 
-  - model_name: gpt-35-turbo
+  - model_name: gpt-4.1
     litellm_params:
-      model: azure/gpt-35-turbo
-      api_base: ${AZURE_API_BASE}
+      model: azure/gpt-4.1
+      api_base: ${AZURE_API_BASE}/openai
       api_key: ${AZURE_API_KEY}
-      api_version: "2024-02-01"
+      api_version: "2024-10-01-preview"
       timeout: 600
 
-  - model_name: dall-e-3
+  - model_name: FLUX-1.1-pro
     litellm_params:
-      model: azure/dall-e-3
-      api_base: ${AZURE_API_BASE}
+      model: azure/FLUX-1.1-pro
+      api_base: ${AZURE_API_BASE}/openai
       api_key: ${AZURE_API_KEY}
-      api_version: "2024-02-01"
+      api_version: "2024-10-01-preview"
       timeout: 600
+
+# Disable authentication for local development
+# This allows Open WebUI to connect without a real API key
+litellm_settings:
+  drop_params: true  # Drop unsupported params instead of erroring
+  success_callback: []
+  failure_callback: []
+
+# Accept any API key (including sk-dummy from Open WebUI)
+general_settings:
+  master_key: sk-dummy
