@@ -1,32 +1,71 @@
-version: '3.8'
-
 services:
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
-    container_name: litellm
+    container_name: az-llm-litellm
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"  # Bind to localhost for security
     volumes:
-      - ./litellm_config.yaml:/app/config.yaml
-    environment:
-      - AZURE_API_KEY=${AZURE_API_KEY}
-      - AZURE_API_BASE=${AZURE_API_BASE}
+      - ./docker/litellm/config.yaml:/app/config.yaml:ro  # Read-only mount
+    env_file:
+      - .env  # Store secrets in .env file (see .env.example)
     command: --config /app/config.yaml
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --header='Authorization: Bearer sk-dummy' -O /dev/null http://localhost:4000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   openwebui:
     image: ghcr.io/open-webui/open-webui:main
-    container_name: openwebui
+    container_name: az-llm-openwebui
     ports:
-      - "3000:8080"
+      - "3000:8080"  # External access for web UI
     volumes:
       - open-webui:/app/backend/data
     environment:
       - OPENAI_API_BASE=http://litellm:4000/v1
-      - OPENAI_API_KEY=sk-dummy
+      - OPENAI_API_KEY=sk-dummy  # Intentional dummy key - litellm handles auth
     depends_on:
-      - litellm
+      litellm:
+        condition: service_healthy  # Wait for litellm health check
     restart: unless-stopped
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   open-webui:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
