@@ -5,11 +5,12 @@ A private, locally-hosted AI chatbot with image generation capabilities powered 
 ## Overview
 
 This system provides a full-featured ChatGPT-like interface with:
-- **Multi-model chat** - GPT-4, GPT-3.5 Turbo, and custom models
-- **Image generation** - DALL-E 3 integration
+- **Multi-model chat** - 5 Azure OpenAI models: gpt-4.1, gpt-4.1-mini, gpt-4o, FLUX-1.1-pro, DeepSeek-V3.1
+- **Image generation** - FLUX-1.1-pro integration for high-quality images
+- **Minimal infrastructure** - Single 214-line Bicep file deploys everything to Azure
 - **Conversation management** - Full chat history with persistence
 - **Real-time streaming** - Word-by-word response rendering
-- **Usage tracking** - Automatic cost and token monitoring
+- **Usage tracking** - Automatic cost and token monitoring (260 TPM total capacity)
 - **Private deployment** - Runs entirely on your local machine
 
 ## Technology Stack
@@ -20,34 +21,71 @@ This system provides a full-featured ChatGPT-like interface with:
 - **Orchestration**: Docker Compose - Container management
 - **Storage**: SQLite (in Docker volume) - Conversation persistence
 
-## Quick Start (5 Minutes)
+## Quick Start (10 Minutes)
 
 ### Prerequisites
 
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- Active Azure subscription with Azure OpenAI Service
-- Azure OpenAI models deployed (GPT-4, GPT-3.5 Turbo, DALL-E 3)
+- **Azure**: Azure CLI 2.50+, Bicep CLI 0.18+, active subscription with OpenAI service
+- **Docker**: Docker Engine 20.10+, Docker Compose 2.0+
 
 ### Setup
 
-1. **Clone and configure**
+#### Option 1: Deploy New Azure Infrastructure (Recommended)
+
+1. **Deploy minimal Azure OpenAI infrastructure**
    ```bash
    cd /home/greg/dev/az-llm
 
-   # Create .env from template
-   cp .env.example .env
+   # Configure parameters
+   cp infra/main.parameters.json infra/main.parameters.local.json
+   nano infra/main.parameters.local.json  # Set unique openAIAccountName
 
-   # Edit .env with your Azure credentials
-   nano .env
+   # Deploy to Azure (5-7 minutes)
+   ./scripts/deploy.sh <your-resource-group> @infra/main.parameters.local.json
+
+   # Extract outputs
+   ./scripts/outputs.sh <your-resource-group>
+   # Creates .env.azure-openai with 7 environment variables
+   ```
+
+   This deploys:
+   - 1 Azure OpenAI Account (S0 tier)
+   - 5 Model Deployments: gpt-4.1, gpt-4.1-mini, gpt-4o, FLUX-1.1-pro, DeepSeek-V3.1
+   - Total: 260 TPM capacity
+
+   See [infra/README.md](infra/README.md) for detailed deployment guide.
+
+2. **Configure Docker**
+   ```bash
+   # Environment variables already extracted to .env.azure-openai
+   source .env.azure-openai
+
+   # Start containers
+   docker compose up -d
+   ```
+
+3. **Access the interface**
+
+   Open browser to `http://localhost:3000`
+
+   Create admin account on first visit, then start chatting with 5 models!
+
+#### Option 2: Use Existing Azure OpenAI
+
+If you already have Azure OpenAI deployed:
+
+1. **Configure environment**
+   ```bash
+   cp .env.example .env
+   nano .env  # Add your Azure endpoint and API key
    ```
 
 2. **Update model configuration**
 
-   Edit `litellm_config.yaml` and replace `azure/gpt-4-turbo` with your actual Azure deployment names:
+   Edit `docker/litellm/config.yaml` with your deployment names:
    ```yaml
    model_list:
-     - model_name: gpt-4
+     - model_name: gpt-4.1
        litellm_params:
          model: azure/your-gpt4-deployment-name  # ← Update this
    ```
@@ -57,15 +95,10 @@ This system provides a full-featured ChatGPT-like interface with:
    docker compose up -d
    ```
 
-4. **Access the interface**
+### Verification
 
-   Open browser to `http://localhost:3000`
-
-   Create admin account on first visit, then start chatting!
-
-5. **Verify usage tracking**
-
-   LiteLLM dashboard: `http://localhost:4000/ui`
+- **Open WebUI**: `http://localhost:3000` - Chat interface with model selector
+- **LiteLLM Dashboard**: `http://localhost:4000/ui` - Usage tracking
 
 ## Architecture
 
@@ -128,6 +161,11 @@ This system provides a full-featured ChatGPT-like interface with:
 
 ## Documentation
 
+### Infrastructure Deployment
+- **[Infrastructure README](infra/README.md)** - Minimal Bicep deployment guide (5 models, 214 lines)
+- **[Quickstart Guide](specs/003-create-a-minimal/quickstart.md)** - 6 integration scenarios with examples
+
+### Application Usage
 - **[Setup Guide](docs/SETUP.md)** - Detailed setup instructions with Azure provisioning
 - **[Usage Guide](docs/USAGE.md)** - Feature walkthrough and best practices
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
@@ -216,5 +254,11 @@ Configuration files in this repository are provided as-is.
 ---
 
 **Project Status**: ✅ Production Ready
+
+**Latest Features**:
+- ✅ **Minimal Single-File Bicep** (Feature 003) - 214-line infrastructure for 5 Azure OpenAI models
+- ✅ **5 Model Deployments** - gpt-4.1, gpt-4.1-mini, gpt-4o, FLUX-1.1-pro, DeepSeek-V3.1 (260 TPM)
+- ✅ **TDD Validated** - 11 test scripts, contract schemas, 6 integration scenarios
+- ✅ **Docker Integration** - LiteLLM config with environment variable support
 
 Built with the [Specify Framework](https://github.com/specify-sh/specify) - Constitutional development workflow for Azure-native applications.

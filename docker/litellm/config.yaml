@@ -1,30 +1,51 @@
 model_list:
-  - model_name: DeepSeek-V3.1
-    litellm_params:
-      model: azure/DeepSeek-V3.1
-      api_base: https://bg-llm-01.services.ai.azure.com
-      api_version: "2024-05-01-preview"
-      api_key: os.environ/AZURE_API_KEY
-      timeout: 600
-
+  # GPT-4.1 (50 TPM) - Primary GPT model for general tasks
   - model_name: gpt-4.1
     litellm_params:
-      model: azure/gpt-4.1
-      api_base: https://bg-llm-01.cognitiveservices.azure.com
+      model: azure/os.environ/GPT41_DEPLOYMENT_NAME
+      api_base: os.environ/AZURE_OPENAI_ENDPOINT
       api_version: "2025-01-01-preview"
       api_key: os.environ/AZURE_API_KEY
       timeout: 600
 
+  # GPT-4.1-Mini (100 TPM) - Cost-effective GPT for high-volume queries
+  - model_name: gpt-4.1-mini
+    litellm_params:
+      model: azure/os.environ/GPT41_MINI_DEPLOYMENT_NAME
+      api_base: os.environ/AZURE_OPENAI_ENDPOINT
+      api_version: "2025-01-01-preview"
+      api_key: os.environ/AZURE_API_KEY
+      timeout: 600
+
+  # GPT-4o (50 TPM) - High-performance multimodal model
+  - model_name: gpt-4o
+    litellm_params:
+      model: azure/os.environ/GPT4O_DEPLOYMENT_NAME
+      api_base: os.environ/AZURE_OPENAI_ENDPOINT
+      api_version: "2025-01-01-preview"
+      api_key: os.environ/AZURE_API_KEY
+      timeout: 600
+
+  # FLUX-1.1-pro (10 TPM) - Image generation model
   - model_name: FLUX-1.1-pro
     litellm_params:
-      model: azure/FLUX-1.1-pro
-      api_base: https://bg-llm-01.services.ai.azure.com
+      model: azure/os.environ/FLUX_DEPLOYMENT_NAME
+      api_base: os.environ/AZURE_OPENAI_ENDPOINT
       api_version: "2025-04-01-preview"
       api_key: os.environ/AZURE_API_KEY
       base_model: FLUX-1.1-pro
       timeout: 600
     model_info:
       mode: image_generation
+
+  # DeepSeek-V3.1 (50 TPM) - Alternative LLM for specialized tasks
+  - model_name: DeepSeek-V3.1
+    litellm_params:
+      model: azure/os.environ/DEEPSEEK_DEPLOYMENT_NAME
+      api_base: os.environ/AZURE_OPENAI_ENDPOINT
+      api_version: "2024-05-01-preview"
+      api_key: os.environ/AZURE_API_KEY
+      timeout: 600
 
 # Disable authentication for local development
 # This allows Open WebUI to connect without requiring API key validation

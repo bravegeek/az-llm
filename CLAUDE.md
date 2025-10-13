@@ -178,3 +178,38 @@ specs/###-feature-name/
 - Azure CLI and Bicep for IaC
 - Managed Identity (no keys in code)
 - Application Insights for observability
+
+### Infrastructure (Feature 003-create-a-minimal)
+**Minimal Single-File Bicep for Azure OpenAI**:
+- **Single Bicep file**: `infra/main.bicep` (214 lines < 300 limit)
+- **5 Model Deployments**: gpt-4.1, gpt-4.1-mini, gpt-4o, FLUX-1.1-pro, DeepSeek-V3.1
+- **Total TPM**: 260 (50+100+50+10+50)
+- **Deployment Scripts**: `scripts/deploy.sh`, `scripts/validate.sh`, `scripts/outputs.sh`
+- **Test Suite**: `tests/bicep/` (syntax, build, parameters, integration)
+- **Old Infrastructure**: Archived to `infra-archive/2025-10-12-original/`
+
+**Structure**:
+```
+infra/
+├── main.bicep              # Single-file OpenAI provisioning
+├── main.parameters.json    # 17 parameters (5 models)
+└── README.md               # Deployment guide
+
+scripts/
+├── deploy.sh               # Azure deployment automation
+├── validate.sh             # Pre-deployment validation
+└── outputs.sh              # Extract to .env.azure-openai
+
+tests/bicep/
+├── linter.test.sh          # Bicep syntax validation
+├── build.test.sh           # ARM compilation test
+├── parameter-validation.test.sh  # Schema validation
+├── contract-input.test.sh  # Input contract test
+├── contract-output.test.sh # Output contract test
+└── quickstart-scenario-*.test.sh  # 6 integration tests
+
+infra-archive/
+└── 2025-10-12-original/    # Old 15-file infrastructure
+```
+
+**Constitutional Compliance**: ✅ Simplicity-First (single file), TDD (tests before code), Azure-native (Bicep/CLI), Clear Contracts (JSON Schema), Observability (deployment logs)
