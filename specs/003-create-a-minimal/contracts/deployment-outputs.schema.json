@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/bravegeek/az-llm/specs/003-create-a-minimal/contracts/deployment-outputs.schema.json",
+  "title": "Deployment Outputs Schema",
+  "description": "Output contract for Azure OpenAI deployment results (integration contract with Docker configuration)",
+  "type": "object",
+  "required": [
+    "endpoint",
+    "apiKey",
+    "resourceId",
+    "deploymentNames",
+    "location"
+  ],
+  "properties": {
+    "endpoint": {
+      "type": "string",
+      "description": "Azure OpenAI API endpoint URL",
+      "format": "uri",
+      "pattern": "^https://[a-z0-9-]+\\.(openai\\.azure\\.com|cognitiveservices\\.azure\\.com|services\\.ai\\.azure\\.com)/?$",
+      "examples": [
+        "https://bg-llm-minimal.openai.azure.com/",
+        "https://bg-llm-minimal.cognitiveservices.azure.com/"
+      ]
+    },
+    "apiKey": {
+      "type": "string",
+      "description": "Primary access key for API authentication (SENSITIVE - do not commit)",
+      "minLength": 32,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9+/=]+$",
+      "examples": ["<redacted-32-character-base64-key>"],
+      "$comment": "Real keys are base64-encoded secrets returned by listKeys()"
+    },
+    "resourceId": {
+      "type": "string",
+      "description": "Full Azure resource ID for RBAC and monitoring",
+      "pattern": "^/subscriptions/[a-f0-9-]+/resourceGroups/[^/]+/providers/Microsoft\\.CognitiveServices/accounts/[^/]+$",
+      "examples": [
+        "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/my-rg/providers/Microsoft.CognitiveServices/accounts/bg-llm-minimal"
+      ]
+    },
+    "deploymentNames": {
+      "type": "array",
+      "description": "List of 5 model deployment names (for LiteLLM config.yaml mapping)",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-.]{0,62}[a-z0-9]$",
+        "minLength": 2,
+        "maxLength": 64
+      },
+      "examples": [
+        ["gpt-4.1", "gpt-4.1-mini", "gpt-4o", "FLUX-1.1-pro", "DeepSeek-V3.1"]
+      ]
+    },
+    "location": {
+      "type": "string",
+      "description": "Deployed Azure region (echo of input parameter)",
+      "pattern": "^[a-z0-9]+$",
+      "minLength": 4,
+      "maxLength": 20,
+      "examples": ["eastus2", "westus3"]
+    },
+    "accountName": {
+      "type": "string",
+      "description": "OpenAI account name (for reference)",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$",
+      "minLength": 2,
+      "maxLength": 64,
+      "examples": ["bg-llm-minimal"]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "endpoint": "https://bg-llm-minimal.openai.azure.com/",
+      "apiKey": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789+/==",
+      "resourceId": "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/az-llm-rg/providers/Microsoft.CognitiveServices/accounts/bg-llm-minimal",
+      "deploymentNames": ["gpt-4.1", "gpt-4.1-mini", "gpt-4o", "FLUX-1.1-pro", "DeepSeek-V3.1"],
+      "location": "eastus2",
+      "accountName": "bg-llm-minimal"
+    }
+  ],
+  "definitions": {
+    "azureUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "HTTPS URL in Azure domain"
+    },
+    "deploymentName": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-.]{0,62}[a-z0-9]$",
+      "description": "Valid Azure model deployment name"
+    }
+  },
+  "$comment": "This schema defines the contract between Bicep deployment outputs and Docker environment configuration. Fields map to:\n- endpoint → config.yaml api_base (same for all 5 models)\n- apiKey → .env AZURE_API_KEY → config.yaml os.environ/AZURE_API_KEY\n- deploymentNames → config.yaml model identifiers (5 models: gpt-4.1, gpt-4.1-mini, gpt-4o, FLUX-1.1-pro, DeepSeek-V3.1)"
+}

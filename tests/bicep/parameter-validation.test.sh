@@ -1,52 +1,24 @@
-#!/usr/bin/env bash
-#
-# T006: Deployment Parameter Validation Test
-# Validates parameter files against OpenAPI schema
-# Expected to FAIL initially (parameter files don't exist yet)
-#
+#!/bin/bash
+# T008: Parameter validation test
+set -e
 
-set -euo pipefail
+echo "🔍 Testing parameter validation..."
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-PARAMS_DIR="$REPO_ROOT/infra/parameters"
+# Check if ajv-cli is available
+if ! command -v ajv &> /dev/null; then
+    echo "⚠️  ajv-cli not found, installing..."
+    npm install -g ajv-cli 2>&1 | grep -E "(added|up to date)" || true
+fi
 
-echo "=== Deployment Parameter Validation Test ==="
-echo "Scanning: $PARAMS_DIR"
-echo
+# Extract values from ARM parameters file for validation
+jq '.parameters | map_values(.value)' infra/main.parameters.json > /tmp/params-values.json
 
-# Check for parameter files
-PARAM_FILES=("dev.bicepparam" "staging.bicepparam" "prod.bicepparam")
-MISSING=0
-
-for param_file in "${PARAM_FILES[@]}"; do
-    FILE_PATH="$PARAMS_DIR/$param_file"
-    echo -n "Checking $param_file... "
-
-    if [ ! -f "$FILE_PATH" ]; then
-        echo "MISSING"
-        MISSING=1
-        continue
-    fi
-
-    # Validate bicepparam syntax (basic check)
-    if grep -q "using.*main.bicep" "$FILE_PATH" && \
-       grep -q "param environment" "$FILE_PATH" && \
-       grep -q "param location" "$FILE_PATH"; then
-        echo "OK"
-    else
-        echo "INVALID (missing required params)"
-        MISSING=1
-    fi
-done
-
-if [ $MISSING -eq 1 ]; then
-    echo
-    echo "Parameter validation test FAILED"
-    echo "Missing or invalid parameter files"
+# Validate extracted values against schema
+if ajv validate -s specs/003-create-a-minimal/contracts/bicep-parameters.schema.json \
+   -d /tmp/params-values.json 2>&1 | grep -q "invalid"; then
+    echo "❌ Parameter validation failed: Parameters do not match schema"
     exit 1
 fi
 
-echo
-echo "Parameter validation test PASSED"
+echo "✅ Parameters valid"
 exit 0

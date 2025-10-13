@@ -1,300 +1,340 @@
-# Azure Infrastructure as Code
+# Minimal Azure OpenAI Infrastructure
 
-This directory contains the Bicep Infrastructure as Code (IaC) for the az-llm project, providing a complete Azure deployment for a private AI chatbot and image generator.
+Single-file Bicep deployment for Azure OpenAI Service with 5 model deployments.
 
-## Architecture Overview
+## Overview
 
-The infrastructure implements a **hybrid networking** approach:
+This minimal infrastructure replaces the previous 15-file Bicep setup with a single `main.bicep` file that deploys:
 
-- **Azure OpenAI Service**: Public endpoint with managed identity authentication (no private endpoint)
-- **App Service**: VNet integration for outbound traffic control, system-assigned managed identity
-- **Static Web App**: Public frontend for user access
-- **Monitoring**: Workspace-based Application Insights with Log Analytics
+- **1 Azure OpenAI Account** (S0 tier)
+- **5 Model Deployments** (total 260 TPM):
+  1. `gpt-4.1` - Primary GPT model (50 TPM)
+  2. `gpt-4.1-mini` - Cost-effective GPT (100 TPM)
+  3. `gpt-4o` - High-performance multimodal (50 TPM)
+  4. `FLUX-1.1-pro` - Image generation (10 TPM)
+  5. `DeepSeek-V3.1` - Alternative LLM (50 TPM)
 
-### Resources Deployed
-
-| Resource | Purpose | Naming Convention |
-|----------|---------|-------------------|
-| Virtual Network | App Service integration | `vnet-az-llm-{env}` |
-| Azure OpenAI Service | GPT-4o, GPT-3.5 Turbo, DALL-E 3 | `oai-az-llm-{env}` |
-| App Service Plan | Backend API hosting | `asp-az-llm-{env}` |
-| App Service | Backend API | `app-az-llm-backend-{env}` |
-| Static Web App | Frontend UI | `swa-az-llm-frontend-{env}` |
-| Log Analytics Workspace | Centralized logging | `law-az-llm-{env}` |
-| Application Insights | Observability | `appi-az-llm-{env}` |
+**Constitutional Compliance**: ✅ Single file (214 lines < 300), TDD validated, Azure-native
 
 ## Prerequisites
 
-Before deploying, ensure you have:
+- **Azure CLI** 2.50+ ([Install](https://docs.microsoft.com/cli/azure/install-azure-cli))
+- **Bicep CLI** 0.18+ (run `az bicep install`)
+- **Azure Subscription** with OpenAI service enabled
+- **Resource Group** (existing or create new)
 
-1. **Azure CLI** >= 2.50.0
-2. **Bicep CLI** >= 0.20.0
-3. **Azure Subscription** with appropriate permissions
-4. **Resource Providers** registered:
-   - `Microsoft.CognitiveServices`
-   - `Microsoft.Web`
-   - `Microsoft.Network`
-   - `Microsoft.Insights`
-   - `Microsoft.OperationalInsights`
-
-### Check Prerequisites
-
+**Verify prerequisites**:
 ```bash
-./infra/scripts/check-prerequisites.sh
-```
-
-## Project Structure
-
-```
-infra/
-├── main.bicep                  # Main orchestrator
-├── modules/                    # Bicep modules
-│   ├── vnet.bicep             # Virtual Network
-│   ├── openai.bicep           # Azure OpenAI Service
-│   ├── appservice.bicep       # App Service + Plan
-│   ├── staticwebapp.bicep     # Static Web App
-│   └── monitoring.bicep       # Log Analytics + App Insights
-├── parameters/                 # Environment-specific parameters
-│   ├── dev.bicepparam         # Development
-│   ├── staging.bicepparam     # Staging
-│   └── prod.bicepparam        # Production
-├── scripts/                    # Deployment and validation scripts
-│   ├── check-prerequisites.sh # Validates Azure CLI and Bicep versions
-│   ├── deploy.sh              # Deploys infrastructure
-│   ├── validate.sh            # Pre-deployment validation
-│   ├── verify-deployment.sh   # Post-deployment verification
-│   ├── verify-security.sh     # Security compliance checks
-│   └── cleanup.sh             # Resource cleanup
-└── README.md                   # This file
+az --version | grep "azure-cli"
+az bicep version
+az account show --query "name" -o tsv
 ```
 
 ## Quick Start
 
-### 1. Validate Infrastructure
-
-Before deploying, validate your Bicep templates and parameters:
+### 1. Configure Parameters
 
 ```bash
-./infra/scripts/validate.sh --environment dev
+# Copy parameters template
+cp infra/main.parameters.json infra/main.parameters.local.json
+
+# Edit main.parameters.local.json:
+# - Set "openAIAccountName" to globally unique name (e.g., "yourname-llm-dev")
+# - Set "location" to your preferred region (e.g., "eastus2", "westus3")
+# - Adjust TPM quotas if needed (default total: 260 TPM)
 ```
 
-This performs:
-- Bicep linting
-- Template compilation
-- Parameter validation
-- What-if analysis (shows planned changes)
-
-### 2. Deploy Infrastructure
-
-Deploy to your chosen environment:
+### 2. Validate Configuration
 
 ```bash
-# Development
-./infra/scripts/deploy.sh --environment dev
-
-# Staging
-./infra/scripts/deploy.sh --environment staging
-
-# Production
-./infra/scripts/deploy.sh --environment prod
+./scripts/validate.sh
 ```
 
-The script will:
-1. Run pre-flight checks
-2. Create resource group if needed
-3. Deploy all resources
-4. Display deployment outputs
+Expected output:
+```
+✅ Syntax valid
+✅ Build valid
+✅ Parameters valid
+```
 
-Expected deployment time: **5-10 minutes**
-
-### 3. Verify Deployment
-
-After deployment completes, verify all resources:
+### 3. Deploy Infrastructure
 
 ```bash
-./infra/scripts/verify-deployment.sh --environment dev --resource-group rg-az-llm-dev
+# Login to Azure
+az login
+
+# Create resource group (if needed)
+az group create --name my-openai-rg --location eastus2
+
+# Deploy
+./scripts/deploy.sh my-openai-rg @infra/main.parameters.local.json
 ```
 
-This checks:
-- Resource existence
-- VNet integration
-- Managed identity configuration
-- RBAC role assignments
-- Service configurations
+Deployment time: ~5-7 minutes
 
-### 4. Validate Security
-
-Run security compliance checks:
+### 4. Extract Outputs
 
 ```bash
-./infra/scripts/verify-security.sh --environment dev --resource-group rg-az-llm-dev
+./scripts/outputs.sh my-openai-rg
 ```
 
-This validates:
-- HTTPS enforcement
-- TLS 1.2+ requirement
-- Managed identity usage
-- No API keys in app settings
-- Network security configuration
+This creates `.env.azure-openai` with 7 environment variables:
+- `AZURE_OPENAI_ENDPOINT` - API endpoint URL
+- `AZURE_API_KEY` - Primary access key
+- `GPT41_DEPLOYMENT_NAME` - gpt-4.1 deployment name
+- `GPT41_MINI_DEPLOYMENT_NAME` - gpt-4.1-mini deployment name
+- `GPT4O_DEPLOYMENT_NAME` - gpt-4o deployment name
+- `FLUX_DEPLOYMENT_NAME` - FLUX-1.1-pro deployment name
+- `DEEPSEEK_DEPLOYMENT_NAME` - DeepSeek-V3.1 deployment name
 
-## Deployment Outputs
+## Configuration
 
-After successful deployment, the following outputs are available:
+### Parameter File Structure
 
-| Output | Description | Usage |
-|--------|-------------|-------|
-| `openAiEndpoint` | Azure OpenAI endpoint URL | Configure backend API |
-| `openAiResourceId` | OpenAI resource ID | RBAC assignments |
-| `appServiceName` | Backend App Service name | Deployment targets |
-| `appServicePrincipalId` | Managed identity principal ID | RBAC verification |
-| `staticWebAppUrl` | Frontend URL | User access |
-| `applicationInsightsConnectionString` | App Insights connection | Telemetry configuration |
-| `applicationInsightsInstrumentationKey` | Instrumentation key | Legacy telemetry |
+```json
+{
+  "parameters": {
+    "location": { "value": "eastus2" },
+    "openAIAccountName": { "value": "my-unique-name" },
+    "aiFoundryProjectName": { "value": "optional-project-tag" },
+    "gpt41ModelName": { "value": "gpt-4.1" },
+    "gpt41ModelVersion": { "value": "0409" },
+    "gpt41CapacityTPM": { "value": 50 },
+    // ... 15 more model parameters (3 per model × 5 models)
+  }
+}
+```
 
-Retrieve outputs:
+### Supported Regions
+
+Check region availability:
+```bash
+az account list-locations \
+  --query "[?metadata.regionCategory=='Recommended'].name" \
+  -o tsv
+```
+
+**Recommended**: `eastus2`, `westus3`, `swedencentral`
+
+### TPM Quota Management
+
+**Default allocation** (260 TPM total):
+- GPT-4.1: 50 TPM
+- GPT-4.1-Mini: 100 TPM (higher for high-volume queries)
+- GPT-4o: 50 TPM
+- FLUX-1.1-pro: 10 TPM (image generation is slower)
+- DeepSeek-V3.1: 50 TPM
+
+**Check current quota**:
+```bash
+az cognitiveservices account list-skus \
+  --resource-group <your-rg> \
+  --name <your-account> \
+  --query "value[].capacity"
+```
+
+**To adjust**: Edit `*CapacityTPM` values in parameters file
+
+## Docker Integration
+
+### Update LiteLLM Configuration
 
 ```bash
-az deployment group show \
-  --resource-group rg-az-llm-dev \
-  --name <deployment-name> \
-  --query properties.outputs
+# Source environment variables
+source .env.azure-openai
+
+# Update docker/litellm/config.yaml to reference:
+#  - api_base: $AZURE_OPENAI_ENDPOINT (same for all 5 models)
+#  - api_key: os.environ/AZURE_API_KEY
+#  - model names: $GPT41_DEPLOYMENT_NAME, etc.
+
+# Restart containers
+docker compose restart litellm
 ```
 
-## Environment Configuration
-
-### Development (dev)
-
-- **SKU**: Basic B1 (App Service)
-- **Models**: GPT-4o, GPT-3.5 Turbo, DALL-E 3
-- **Capacity**: 10 TPM per model (1 TPM for DALL-E 3)
-- **Use case**: Testing, experimentation
-
-### Staging (staging)
-
-- **SKU**: Basic B1 (App Service)
-- **Models**: Same as development
-- **Capacity**: Same as development
-- **Use case**: Pre-production validation
-
-### Production (prod)
-
-- **SKU**: Basic B1 (App Service)
-- **Models**: Same as development
-- **Capacity**: Same as development
-- **Use case**: Live user traffic
-
-> **Note**: Update SKUs and capacity in `parameters/*.bicepparam` for production workloads.
-
-## Security Best Practices
-
-This infrastructure implements:
-
-1. **Managed Identity**: App Service uses system-assigned identity (no secrets)
-2. **RBAC**: "Cognitive Services OpenAI User" role for App Service → OpenAI
-3. **HTTPS Only**: Enforced on App Service
-4. **TLS 1.2+**: Minimum TLS version required
-5. **FTP Disabled**: App Service FTP access disabled
-6. **VNet Integration**: App Service integrated with VNet
-7. **Workspace-based Monitoring**: Application Insights linked to Log Analytics
-
-### No Private Endpoints
-
-This implementation uses **public endpoints with managed identity** instead of private endpoints because:
-- Simplicity-first approach (constitutional principle)
-- Managed identity provides strong authentication
-- Azure OpenAI's public endpoint supports managed identity
-- Private endpoints add complexity without significant security benefit for this use case
-
-## Cost Estimation
-
-Estimated monthly costs (East US region):
-
-| Resource | SKU | Estimated Cost |
-|----------|-----|----------------|
-| Azure OpenAI | GPT-4o, GPT-3.5, DALL-E 3 | Pay-per-use (varies) |
-| App Service | Basic B1 | ~$13/month |
-| Static Web App | Standard | Free tier available |
-| Log Analytics | Pay-as-you-go | ~$2/GB ingested |
-| Application Insights | Workspace-based | Included in Log Analytics |
-| Virtual Network | Standard | Free |
-
-> **Note**: OpenAI costs depend on usage. Monitor with Azure Cost Management.
-
-## Updating Infrastructure
-
-To update existing infrastructure:
-
-1. Modify Bicep templates or parameters
-2. Validate changes:
-   ```bash
-   ./infra/scripts/validate.sh --environment dev
-   ```
-3. Review what-if output
-4. Deploy updates:
-   ```bash
-   ./infra/scripts/deploy.sh --environment dev
-   ```
-
-Bicep deployments are **idempotent** - only changes are applied.
-
-## Cleanup
-
-To delete all resources in an environment:
-
-```bash
-# With confirmation prompts
-./infra/scripts/cleanup.sh --environment dev
-
-# Force delete (no prompts - DANGEROUS)
-./infra/scripts/cleanup.sh --environment dev --force
-```
-
-> **WARNING**: This permanently deletes all resources. Production environments require typing "DELETE PRODUCTION".
-
-## Testing
-
-Run all infrastructure tests:
-
-```bash
-./tests/run-all-tests.sh
-```
-
-Test categories:
-- **Bicep Tests**: Linting, build, parameter validation, policy compliance
-- **Integration Tests**: Fresh deployment, updates, multi-environment, security
+See [quickstart.md](../specs/003-create-a-minimal/quickstart.md) for full integration scenarios.
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues and solutions.
+### Issue: "AccountNameAlreadyExists"
+**Cause**: OpenAI account name not globally unique
+**Fix**: Change `openAIAccountName` in parameters to a unique value
 
-Quick diagnostics:
+### Issue: "QuotaExceeded"
+**Cause**: Subscription TPM quota limit reached (260 TPM exceeds limit)
+**Fix**:
+1. Reduce TPM capacities in parameters file, OR
+2. Request quota increase: Azure Portal → Quotas → Cognitive Services
 
+### Issue: "InvalidTemplate" during deployment
+**Cause**: Bicep syntax error or API version incompatibility
+**Fix**:
 ```bash
-# Check Azure CLI authentication
-az account show
-
-# Check resource provider registration
-az provider show --namespace Microsoft.CognitiveServices --query registrationState
-
-# View deployment logs
-az deployment group show --resource-group rg-az-llm-dev --name <deployment-name>
+./scripts/validate.sh  # Should catch syntax errors
+az bicep upgrade        # Upgrade Bicep CLI
 ```
 
-## References
+### Issue: "Unauthorized" when deploying
+**Cause**: Not logged into Azure CLI or insufficient permissions
+**Fix**:
+```bash
+az login
+az account set --subscription "<your-subscription-id>"
+az role assignment list --assignee $(az account show --query user.name -o tsv)
+# Verify you have "Contributor" role on resource group
+```
 
-- [Azure Bicep Documentation](https://learn.microsoft.com/azure/azure-resource-manager/bicep/)
-- [Azure OpenAI Service](https://learn.microsoft.com/azure/ai-services/openai/)
-- [App Service VNet Integration](https://learn.microsoft.com/azure/app-service/overview-vnet-integration)
-- [Managed Identity Best Practices](https://learn.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview)
+### Issue: Docker can't connect to Azure
+**Cause**: API key not set in environment
+**Fix**:
+```bash
+source .env.azure-openai
+docker compose restart litellm
+```
 
-## Support
+### Issue: Model deployment failed
+**Cause**: Model/version not available in region
+**Fix**: Check regional availability:
+```bash
+az cognitiveservices account list-models \
+  --resource-group <your-rg> \
+  --name <your-account> \
+  --query "[].{Name:name, Version:version}"
+```
 
-For issues or questions:
-1. Check [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-2. Review [project specification](../specs/002-azure-infrastructure-as/spec.md)
-3. Check Azure deployment logs
-4. Review resource-specific documentation
+## Advanced Usage
 
-## License
+### Idempotent Redeployment (Update Capacity)
 
-This infrastructure code follows the same license as the az-llm project.
+```bash
+# Edit TPM capacities in main.parameters.local.json
+# Redeploy (updates in-place, no resource recreation)
+./scripts/deploy.sh my-openai-rg @infra/main.parameters.local.json
+```
+
+Same endpoint and API key maintained.
+
+### Dry-Run (What-If)
+
+```bash
+az deployment group what-if \
+  --resource-group my-openai-rg \
+  --template-file infra/main.bicep \
+  --parameters @infra/main.parameters.local.json
+```
+
+### Delete Infrastructure
+
+```bash
+# Delete resource group (removes all resources)
+az group delete --name my-openai-rg --yes
+
+# OR delete only OpenAI account (keep resource group)
+az cognitiveservices account delete \
+  --resource-group my-openai-rg \
+  --name <account-name>
+```
+
+## Validation & Testing
+
+**Syntax validation**:
+```bash
+./tests/bicep/linter.test.sh
+```
+
+**Build validation**:
+```bash
+./tests/bicep/build.test.sh
+```
+
+**Parameter validation**:
+```bash
+./tests/bicep/parameter-validation.test.sh
+```
+
+**Full validation suite**:
+```bash
+./scripts/validate.sh
+```
+
+**Integration tests**: See [quickstart.md](../specs/003-create-a-minimal/quickstart.md) for 6 end-to-end scenarios
+
+## Migration from Old Infrastructure
+
+See [specs/003-create-a-minimal/quickstart.md Scenario 3](../specs/003-create-a-minimal/quickstart.md#scenario-3-migration-from-old-infrastructure) for complete migration guide.
+
+**Quick summary**:
+1. Old infrastructure archived to `infra-archive/2025-10-12-original/`
+2. Deploy new minimal Bicep to NEW resource group
+3. Test Docker connectivity with new endpoint
+4. Update production config
+5. Manually delete old Azure resources
+
+## Architecture
+
+```
+┌─────────────────────────────────────┐
+│  Azure Resource Group               │
+│  ┌────────────────────────────────┐ │
+│  │ OpenAI Account (S0)            │ │
+│  │  - endpoint: https://...       │ │
+│  │  - apiKey: (via listKeys())    │ │
+│  │                                │ │
+│  │  ┌──────────────────────────┐  │ │
+│  │  │ Model Deployments (5)    │  │ │
+│  │  │  1. gpt-4.1       50 TPM │  │ │
+│  │  │  2. gpt-4.1-mini 100 TPM │  │ │
+│  │  │  3. gpt-4o        50 TPM │  │ │
+│  │  │  4. FLUX-1.1-pro  10 TPM │  │ │
+│  │  │  5. DeepSeek-V3.1 50 TPM │  │ │
+│  │  │  Total: 260 TPM          │  │ │
+│  │  └──────────────────────────┘  │ │
+│  └────────────────────────────────┘ │
+└─────────────────────────────────────┘
+            │
+            │ outputs → .env.azure-openai
+            ▼
+┌─────────────────────────────────────┐
+│  Docker Compose Stack               │
+│  ┌────────────────┐  ┌────────────┐ │
+│  │ LiteLLM Proxy  │  │ Open WebUI │ │
+│  │ (5 models)     │──│            │ │
+│  └────────────────┘  └────────────┘ │
+└─────────────────────────────────────┘
+```
+
+## File Structure
+
+```
+infra/
+├── main.bicep              # Single-file Bicep (214 lines)
+├── main.parameters.json    # Default parameters (all 5 models)
+└── README.md               # This file
+
+scripts/
+├── deploy.sh               # Deployment automation (42 lines)
+├── validate.sh             # Pre-deployment validation (22 lines)
+└── outputs.sh              # Output extraction (52 lines)
+
+tests/bicep/
+├── linter.test.sh          # Syntax validation
+├── build.test.sh           # Compilation test
+├── parameter-validation.test.sh # Schema validation
+└── deployment.test.sh      # Integration test
+
+infra-archive/
+└── 2025-10-12-original/    # Old 15-file infrastructure
+```
+
+## Links
+
+- **Feature Spec**: [specs/003-create-a-minimal/spec.md](../specs/003-create-a-minimal/spec.md)
+- **Quickstart Guide**: [specs/003-create-a-minimal/quickstart.md](../specs/003-create-a-minimal/quickstart.md)
+- **Data Model**: [specs/003-create-a-minimal/data-model.md](../specs/003-create-a-minimal/data-model.md)
+- **Contract Schemas**: [specs/003-create-a-minimal/contracts/](../specs/003-create-a-minimal/contracts/)
+- **Azure OpenAI Docs**: https://learn.microsoft.com/azure/ai-services/openai/
+- **Bicep Docs**: https://learn.microsoft.com/azure/azure-resource-manager/bicep/
+
+---
+
+**Constitutional Compliance**: v1.0.0 | **Feature**: 003-create-a-minimal | **Status**: ✅ Implemented

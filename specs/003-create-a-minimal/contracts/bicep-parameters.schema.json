@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/bravegeek/az-llm/specs/003-create-a-minimal/contracts/bicep-parameters.schema.json",
+  "title": "Minimal Bicep Parameters Schema (5 Models)",
+  "description": "Input contract for Azure OpenAI provisioning via minimal single-file Bicep template with 5 model deployments",
+  "type": "object",
+  "required": [
+    "location",
+    "openAIAccountName",
+    "gpt41ModelName",
+    "gpt41ModelVersion",
+    "gpt41CapacityTPM",
+    "gpt41MiniModelName",
+    "gpt41MiniModelVersion",
+    "gpt41MiniCapacityTPM",
+    "gpt4oModelName",
+    "gpt4oModelVersion",
+    "gpt4oCapacityTPM",
+    "fluxModelName",
+    "fluxModelVersion",
+    "fluxCapacityTPM",
+    "deepseekModelName",
+    "deepseekModelVersion",
+    "deepseekCapacityTPM"
+  ],
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "Azure region for deployment (e.g., eastus2, westus3)",
+      "pattern": "^[a-z0-9]+$",
+      "minLength": 4,
+      "maxLength": 20,
+      "examples": ["eastus2", "westus3", "swedencentral"]
+    },
+    "openAIAccountName": {
+      "type": "string",
+      "description": "Globally unique name for the Azure OpenAI account",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$",
+      "minLength": 2,
+      "maxLength": 64,
+      "examples": ["bg-llm-minimal", "my-openai-dev"]
+    },
+    "aiFoundryProjectName": {
+      "type": "string",
+      "description": "Optional: Name of existing AI Foundry project for organizational tagging",
+      "minLength": 0,
+      "maxLength": 100,
+      "default": "",
+      "examples": ["bg-llm-01", "my-ai-project"]
+    },
+    "gpt41ModelName": {
+      "type": "string",
+      "description": "GPT-4.1 model (primary GPT)",
+      "enum": ["gpt-4", "gpt-4.1", "gpt-4-turbo"],
+      "default": "gpt-4.1",
+      "examples": ["gpt-4.1"]
+    },
+    "gpt41ModelVersion": {
+      "type": "string",
+      "description": "GPT-4.1 model version identifier",
+      "pattern": "^[0-9]{4}(-[0-9]{2}-[0-9]{2})?$",
+      "minLength": 4,
+      "maxLength": 15,
+      "default": "0409",
+      "examples": ["0409", "2024-05-13"]
+    },
+    "gpt41CapacityTPM": {
+      "type": "integer",
+      "description": "Tokens-per-minute quota for GPT-4.1",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 50,
+      "examples": [50, 100]
+    },
+    "gpt41MiniModelName": {
+      "type": "string",
+      "description": "GPT-4o-mini model (cost-effective)",
+      "enum": ["gpt-4o-mini", "gpt-35-turbo"],
+      "default": "gpt-4o-mini",
+      "examples": ["gpt-4o-mini"]
+    },
+    "gpt41MiniModelVersion": {
+      "type": "string",
+      "description": "GPT-4o-mini version identifier",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "minLength": 10,
+      "maxLength": 10,
+      "default": "2024-07-18",
+      "examples": ["2024-07-18"]
+    },
+    "gpt41MiniCapacityTPM": {
+      "type": "integer",
+      "description": "Tokens-per-minute quota for GPT-4o-mini (higher for cost-effective queries)",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 100,
+      "examples": [100, 200]
+    },
+    "gpt4oModelName": {
+      "type": "string",
+      "description": "GPT-4o model (high-performance multimodal)",
+      "enum": ["gpt-4o", "gpt-4o-2024-08-06"],
+      "default": "gpt-4o",
+      "examples": ["gpt-4o"]
+    },
+    "gpt4oModelVersion": {
+      "type": "string",
+      "description": "GPT-4o version identifier",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "minLength": 10,
+      "maxLength": 10,
+      "default": "2024-08-06",
+      "examples": ["2024-08-06"]
+    },
+    "gpt4oCapacityTPM": {
+      "type": "integer",
+      "description": "Tokens-per-minute quota for GPT-4o",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 50,
+      "examples": [50, 100]
+    },
+    "fluxModelName": {
+      "type": "string",
+      "description": "Image generation model",
+      "enum": ["FLUX-1.1-pro", "dall-e-3"],
+      "default": "FLUX-1.1-pro",
+      "examples": ["FLUX-1.1-pro"]
+    },
+    "fluxModelVersion": {
+      "type": "string",
+      "description": "FLUX model version identifier",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "minLength": 10,
+      "maxLength": 10,
+      "default": "2024-11-04",
+      "examples": ["2024-11-04"]
+    },
+    "fluxCapacityTPM": {
+      "type": "integer",
+      "description": "Tokens-per-minute quota for image model",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 10,
+      "examples": [10, 20]
+    },
+    "deepseekModelName": {
+      "type": "string",
+      "description": "DeepSeek model (alternative LLM)",
+      "enum": ["DeepSeek-V3.1", "DeepSeek-V3"],
+      "default": "DeepSeek-V3.1",
+      "examples": ["DeepSeek-V3.1"]
+    },
+    "deepseekModelVersion": {
+      "type": "string",
+      "description": "DeepSeek version identifier",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "minLength": 10,
+      "maxLength": 10,
+      "default": "2024-05-01",
+      "examples": ["2024-05-01"]
+    },
+    "deepseekCapacityTPM": {
+      "type": "integer",
+      "description": "Tokens-per-minute quota for DeepSeek",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 50,
+      "examples": [50, 100]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "location": "eastus2",
+      "openAIAccountName": "bg-llm-minimal",
+      "aiFoundryProjectName": "bg-llm-01",
+      "gpt41ModelName": "gpt-4.1",
+      "gpt41ModelVersion": "0409",
+      "gpt41CapacityTPM": 50,
+      "gpt41MiniModelName": "gpt-4o-mini",
+      "gpt41MiniModelVersion": "2024-07-18",
+      "gpt41MiniCapacityTPM": 100,
+      "gpt4oModelName": "gpt-4o",
+      "gpt4oModelVersion": "2024-08-06",
+      "gpt4oCapacityTPM": 50,
+      "fluxModelName": "FLUX-1.1-pro",
+      "fluxModelVersion": "2024-11-04",
+      "fluxCapacityTPM": 10,
+      "deepseekModelName": "DeepSeek-V3.1",
+      "deepseekModelVersion": "2024-05-01",
+      "deepseekCapacityTPM": 50
+    }
+  ],
+  "definitions": {
+    "azureRegion": {
+      "type": "string",
+      "description": "Valid Azure region name",
+      "pattern": "^[a-z0-9]+$"
+    },
+    "tpmQuota": {
+      "type": "integer",
+      "description": "Tokens-per-minute allocation",
+      "minimum": 1,
+      "maximum": 1000
+    }
+  },
+  "$comment": "Total default TPM capacity: 260 (50+100+50+10+50). Ensure subscription quota supports this allocation."
+}
