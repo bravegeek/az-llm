@@ -1,7 +1,7 @@
 // Minimal single-file Bicep for Azure OpenAI provisioning
 // Feature: 003-create-a-minimal
-// Deploys 5 models: gpt-4.1, gpt-4.1-mini, gpt-4o, FLUX-1.1-pro, DeepSeek-V3.1
-// Total TPM capacity: 260 (50+100+50+10+50)
+// Deploys 3 models: gpt-4.1, gpt-4o-mini, gpt-4o
+// Total TPM capacity: 200 (50+100+50)
 
 // ============================================================================
 // PARAMETERS
@@ -23,7 +23,7 @@ param aiFoundryProjectName string = ''
 param gpt41ModelName string = 'gpt-4.1'
 
 @description('GPT-4.1 model version')
-param gpt41ModelVersion string = '0409'
+param gpt41ModelVersion string = '2025-04-14'
 
 @description('GPT-4.1 capacity (TPM)')
 @minValue(1)
@@ -54,29 +54,32 @@ param gpt4oModelVersion string = '2024-08-06'
 @maxValue(1000)
 param gpt4oCapacityTPM int = 50
 
-// FLUX-1.1-pro (Image generation)
-@description('FLUX-1.1-pro model name')
-param fluxModelName string = 'FLUX-1.1-pro'
+// NOTE: FLUX and DeepSeek models are not available in Azure OpenAI
+// Uncomment and update when these models become available in your region
 
-@description('FLUX-1.1-pro model version')
-param fluxModelVersion string = '2024-11-04'
+// // FLUX-1.1-pro (Image generation)
+// @description('FLUX-1.1-pro model name')
+// param fluxModelName string = 'FLUX-1.1-pro'
+//
+// @description('FLUX-1.1-pro model version')
+// param fluxModelVersion string = '2024-11-04'
+//
+// @description('FLUX-1.1-pro capacity (TPM)')
+// @minValue(1)
+// @maxValue(1000)
+// param fluxCapacityTPM int = 10
 
-@description('FLUX-1.1-pro capacity (TPM)')
-@minValue(1)
-@maxValue(1000)
-param fluxCapacityTPM int = 10
-
-// DeepSeek-V3.1 (Alternative LLM)
-@description('DeepSeek-V3.1 model name')
-param deepseekModelName string = 'DeepSeek-V3.1'
-
-@description('DeepSeek-V3.1 model version')
-param deepseekModelVersion string = '2024-05-01'
-
-@description('DeepSeek-V3.1 capacity (TPM)')
-@minValue(1)
-@maxValue(1000)
-param deepseekCapacityTPM int = 50
+// // DeepSeek-V3.1 (Alternative LLM)
+// @description('DeepSeek-V3.1 model name')
+// param deepseekModelName string = 'DeepSeek-V3.1'
+//
+// @description('DeepSeek-V3.1 model version')
+// param deepseekModelVersion string = '2024-05-01'
+//
+// @description('DeepSeek-V3.1 capacity (TPM)')
+// @minValue(1)
+// @maxValue(1000)
+// param deepseekCapacityTPM int = 50
 
 // ============================================================================
 // RESOURCES
@@ -151,39 +154,39 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
   }
 }
 
-// Model Deployment 4: FLUX-1.1-pro (Image generation)
-resource fluxDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-  parent: openAIAccount
-  name: 'FLUX-1.1-pro'
-  sku: {
-    name: 'Standard'
-    capacity: fluxCapacityTPM
-  }
-  properties: {
-    model: {
-      format: 'OpenAI'
-      name: fluxModelName
-      version: fluxModelVersion
-    }
-  }
-}
+// // Model Deployment 4: FLUX-1.1-pro (Image generation) - NOT AVAILABLE
+// resource fluxDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
+//   parent: openAIAccount
+//   name: 'FLUX-1.1-pro'
+//   sku: {
+//     name: 'Standard'
+//     capacity: fluxCapacityTPM
+//   }
+//   properties: {
+//     model: {
+//       format: 'OpenAI'
+//       name: fluxModelName
+//       version: fluxModelVersion
+//     }
+//   }
+// }
 
-// Model Deployment 5: DeepSeek-V3.1 (Alternative LLM)
-resource deepseekDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-  parent: openAIAccount
-  name: 'DeepSeek-V3.1'
-  sku: {
-    name: 'Standard'
-    capacity: deepseekCapacityTPM
-  }
-  properties: {
-    model: {
-      format: 'OpenAI'
-      name: deepseekModelName
-      version: deepseekModelVersion
-    }
-  }
-}
+// // Model Deployment 5: DeepSeek-V3.1 (Alternative LLM) - NOT AVAILABLE
+// resource deepseekDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
+//   parent: openAIAccount
+//   name: 'DeepSeek-V3.1'
+//   sku: {
+//     name: 'Standard'
+//     capacity: deepseekCapacityTPM
+//   }
+//   properties: {
+//     model: {
+//       format: 'OpenAI'
+//       name: deepseekModelName
+//       version: deepseekModelVersion
+//     }
+//   }
+// }
 
 // ============================================================================
 // OUTPUTS
@@ -198,13 +201,11 @@ output apiKey string = openAIAccount.listKeys().key1
 @description('Full Azure resource ID')
 output resourceId string = openAIAccount.id
 
-@description('Array of 5 model deployment names')
+@description('Array of 3 model deployment names')
 output deploymentNames array = [
   gpt41Deployment.name
   gpt41MiniDeployment.name
   gpt4oDeployment.name
-  fluxDeployment.name
-  deepseekDeployment.name
 ]
 
 @description('Deployed Azure region')

@@ -1,0 +1,229 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.33.27573",
+      "templateHash": "11136447554800341430"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "openAIAccountName": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Globally unique name for OpenAI account"
+      }
+    },
+    "aiFoundryProjectName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional AI Foundry project name for organizational tagging"
+      }
+    },
+    "gpt41ModelName": {
+      "type": "string",
+      "defaultValue": "gpt-4.1",
+      "metadata": {
+        "description": "GPT-4.1 model name"
+      }
+    },
+    "gpt41ModelVersion": {
+      "type": "string",
+      "defaultValue": "2025-04-14",
+      "metadata": {
+        "description": "GPT-4.1 model version"
+      }
+    },
+    "gpt41CapacityTPM": {
+      "type": "int",
+      "defaultValue": 50,
+      "minValue": 1,
+      "maxValue": 1000,
+      "metadata": {
+        "description": "GPT-4.1 capacity (TPM)"
+      }
+    },
+    "gpt41MiniModelName": {
+      "type": "string",
+      "defaultValue": "gpt-4o-mini",
+      "metadata": {
+        "description": "GPT-4o-mini model name"
+      }
+    },
+    "gpt41MiniModelVersion": {
+      "type": "string",
+      "defaultValue": "2024-07-18",
+      "metadata": {
+        "description": "GPT-4o-mini model version"
+      }
+    },
+    "gpt41MiniCapacityTPM": {
+      "type": "int",
+      "defaultValue": 100,
+      "minValue": 1,
+      "maxValue": 1000,
+      "metadata": {
+        "description": "GPT-4o-mini capacity (TPM)"
+      }
+    },
+    "gpt4oModelName": {
+      "type": "string",
+      "defaultValue": "gpt-4o",
+      "metadata": {
+        "description": "GPT-4o model name"
+      }
+    },
+    "gpt4oModelVersion": {
+      "type": "string",
+      "defaultValue": "2024-08-06",
+      "metadata": {
+        "description": "GPT-4o model version"
+      }
+    },
+    "gpt4oCapacityTPM": {
+      "type": "int",
+      "defaultValue": 50,
+      "minValue": 1,
+      "maxValue": 1000,
+      "metadata": {
+        "description": "GPT-4o capacity (TPM)"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('openAIAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "OpenAI",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "customSubDomainName": "[parameters('openAIAccountName')]",
+        "publicNetworkAccess": "Enabled"
+      },
+      "tags": {
+        "aiFoundryProject": "[parameters('aiFoundryProjectName')]",
+        "deployedBy": "bicep-minimal",
+        "feature": "003-create-a-minimal"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', parameters('openAIAccountName'), 'gpt-4.1')]",
+      "sku": {
+        "name": "Standard",
+        "capacity": "[parameters('gpt41CapacityTPM')]"
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[parameters('gpt41ModelName')]",
+          "version": "[parameters('gpt41ModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', parameters('openAIAccountName'), 'gpt-4.1-mini')]",
+      "sku": {
+        "name": "Standard",
+        "capacity": "[parameters('gpt41MiniCapacityTPM')]"
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[parameters('gpt41MiniModelName')]",
+          "version": "[parameters('gpt41MiniModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', parameters('openAIAccountName'), 'gpt-4o')]",
+      "sku": {
+        "name": "Standard",
+        "capacity": "[parameters('gpt4oCapacityTPM')]"
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[parameters('gpt4oModelName')]",
+          "version": "[parameters('gpt4oModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIAccountName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "endpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure OpenAI API endpoint URL"
+      },
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIAccountName')), '2023-05-01').endpoint]"
+    },
+    "apiKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Primary access key for API authentication"
+      },
+      "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIAccountName')), '2023-05-01').key1]"
+    },
+    "resourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full Azure resource ID"
+      },
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIAccountName'))]"
+    },
+    "deploymentNames": {
+      "type": "array",
+      "metadata": {
+        "description": "Array of 3 model deployment names"
+      },
+      "value": [
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4o"
+      ]
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Deployed Azure region"
+      },
+      "value": "[parameters('location')]"
+    },
+    "accountName": {
+      "type": "string",
+      "metadata": {
+        "description": "OpenAI account name"
+      },
+      "value": "[parameters('openAIAccountName')]"
+    }
+  }
+}

@@ -6,10 +6,10 @@
       "value": "eastus2"
     },
     "openAIAccountName": {
-      "value": "bg-llm-minimal"
+      "value": "your-account-name-here"
     },
     "aiFoundryProjectName": {
-      "value": "bg-llm-01"
+      "value": "your-project-name-here"
     },
     "gpt41ModelName": {
       "value": "gpt-4.1"

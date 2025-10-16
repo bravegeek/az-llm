@@ -336,5 +336,37 @@ infra-archive/
 - **Bicep Docs**: https://learn.microsoft.com/azure/azure-resource-manager/bicep/
 
 ---
+Available models in EastUS2
+Name                          Version
+----------------------------  ----------------
+gpt-35-turbo                  0613
+gpt-35-turbo                  1106
+gpt-35-turbo                  0125
+gpt-35-turbo-16k              0613
+gpt-4                         0125-Preview
+gpt-4                         1106-Preview
+gpt-4                         0613
+gpt-4-32k                     0613
+gpt-4                         turbo-2024-04-09
+gpt-4o                        2024-05-13
+gpt-4o                        2024-08-06
+gpt-4o-mini                   2024-07-18
+gpt-4o                        2024-11-20
+gpt-4o-mini-realtime-preview  2024-12-17
+gpt-4o-realtime-preview       2024-12-17
+gpt-4o-realtime-preview       2025-06-03
+gpt-4o-audio-preview          2024-12-17
+gpt-4o-mini-audio-preview     2024-12-17
+gpt-4o-transcribe             2025-03-20
+gpt-4o-mini-transcribe        2025-03-20
+gpt-4o-mini-tts               2025-03-20
+gpt-4.1                       2025-04-14
+gpt-4.1-mini                  2025-04-14
+gpt-4.1-nano                  2025-04-14
+gpt-5-mini                    2025-08-07
+gpt-5-nano                    2025-08-07
+gpt-5-chat                    2025-08-07
+gpt-audio                     2025-08-28
+
 
 **Constitutional Compliance**: v1.0.0 | **Feature**: 003-create-a-minimal | **Status**: ✅ Implemented

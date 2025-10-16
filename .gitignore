@@ -64,6 +64,12 @@ jspm_packages/
 .env.production.local
 .env.local
 
+# Secrets and sensitive configuration
+*.secrets.json
+*.local.json
+secrets/
+.secrets/
+
 # Build output
 dist/
 build/
@@ -96,6 +102,14 @@ logs
 # Azure
 *.publishsettings
 *.azurePubxml
+.azure/
+deployment-*.log
+deploy-*.log
+*.arm.json
+!contracts/*.json
+!infra/contracts/*.json
+*.tmp
+*.temp
 
 # Docker
 docker-compose.override.yml
