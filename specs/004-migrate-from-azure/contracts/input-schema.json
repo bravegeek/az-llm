@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://az-llm.example.com/schemas/ai-foundry-input-v1.json",
+  "title": "Azure AI Foundry Deployment Parameters",
+  "description": "Input parameter schema for Azure AI Foundry infrastructure deployment (Hub + Project + 5 Model Deployments)",
+  "type": "object",
+  "required": [
+    "location",
+    "hubName",
+    "projectName",
+    "aiServicesName"
+  ],
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "Azure region for deployment (must support all 5 models)",
+      "pattern": "^[a-z0-9]+$",
+      "examples": ["eastus2", "westus", "northcentralus"],
+      "minLength": 4,
+      "maxLength": 20
+    },
+    "hubName": {
+      "type": "string",
+      "description": "Globally unique name for AI Foundry Hub (ML Workspace kind=Hub)",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{1,31}[a-zA-Z0-9])?$",
+      "minLength": 3,
+      "maxLength": 33,
+      "examples": ["bg-llm-hub", "my-ai-hub-01"]
+    },
+    "projectName": {
+      "type": "string",
+      "description": "Subscription-unique name for AI Foundry Project (ML Workspace kind=Project)",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{1,31}[a-zA-Z0-9])?$",
+      "minLength": 3,
+      "maxLength": 33,
+      "examples": ["bg-llm-project", "my-ai-project-01"]
+    },
+    "aiServicesName": {
+      "type": "string",
+      "description": "Globally unique name for AI Services account (hosts model deployments)",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{0,62}[a-zA-Z0-9])?$",
+      "minLength": 2,
+      "maxLength": 64,
+      "examples": ["bg-llm-ai", "my-ai-services-01"]
+    },
+    "gpt41ModelName": {
+      "type": "string",
+      "description": "GPT-4.1 model identifier",
+      "default": "gpt-4.1",
+      "examples": ["gpt-4.1"]
+    },
+    "gpt41ModelVersion": {
+      "type": "string",
+      "description": "GPT-4.1 model version",
+      "default": "2025-04-14",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "examples": ["2025-04-14"]
+    },
+    "gpt41CapacityTPM": {
+      "type": "integer",
+      "description": "GPT-4.1 capacity in tokens per minute (TPM)",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 1000,
+      "examples": [50, 100]
+    },
+    "gpt41MiniModelName": {
+      "type": "string",
+      "description": "GPT-4.1-Mini (gpt-4o-mini) model identifier",
+      "default": "gpt-4o-mini",
+      "examples": ["gpt-4o-mini"]
+    },
+    "gpt41MiniModelVersion": {
+      "type": "string",
+      "description": "GPT-4.1-Mini model version",
+      "default": "2024-07-18",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "examples": ["2024-07-18"]
+    },
+    "gpt41MiniCapacityTPM": {
+      "type": "integer",
+      "description": "GPT-4.1-Mini capacity in tokens per minute (TPM)",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 1000,
+      "examples": [100, 200]
+    },
+    "gpt4oModelName": {
+      "type": "string",
+      "description": "GPT-4o model identifier",
+      "default": "gpt-4o",
+      "examples": ["gpt-4o"]
+    },
+    "gpt4oModelVersion": {
+      "type": "string",
+      "description": "GPT-4o model version",
+      "default": "2024-08-06",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "examples": ["2024-08-06"]
+    },
+    "gpt4oCapacityTPM": {
+      "type": "integer",
+      "description": "GPT-4o capacity in tokens per minute (TPM)",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 1000,
+      "examples": [50, 100]
+    },
+    "fluxModelName": {
+      "type": "string",
+      "description": "FLUX-1.1-pro model identifier",
+      "default": "FLUX-1.1-pro",
+      "examples": ["FLUX-1.1-pro"]
+    },
+    "fluxModelVersion": {
+      "type": "string",
+      "description": "FLUX model version",
+      "default": "latest",
+      "examples": ["latest", "1.1"]
+    },
+    "fluxCapacityTPM": {
+      "type": "integer",
+      "description": "FLUX capacity in tokens per minute (TPM)",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 1000,
+      "examples": [10, 20]
+    },
+    "deepseekModelName": {
+      "type": "string",
+      "description": "DeepSeek-V3.1 model identifier",
+      "default": "DeepSeek-V3.1",
+      "examples": ["DeepSeek-V3.1"]
+    },
+    "deepseekModelVersion": {
+      "type": "string",
+      "description": "DeepSeek model version",
+      "default": "latest",
+      "examples": ["latest", "3.1"]
+    },
+    "deepseekCapacityTPM": {
+      "type": "integer",
+      "description": "DeepSeek capacity in tokens per minute (TPM)",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 1000,
+      "examples": [50, 100]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "location": "eastus2",
+      "hubName": "bg-llm-hub",
+      "projectName": "bg-llm-project",
+      "aiServicesName": "bg-llm-ai",
+      "gpt41ModelName": "gpt-4.1",
+      "gpt41ModelVersion": "2025-04-14",
+      "gpt41CapacityTPM": 50,
+      "gpt41MiniModelName": "gpt-4o-mini",
+      "gpt41MiniModelVersion": "2024-07-18",
+      "gpt41MiniCapacityTPM": 100,
+      "gpt4oModelName": "gpt-4o",
+      "gpt4oModelVersion": "2024-08-06",
+      "gpt4oCapacityTPM": 50,
+      "fluxModelName": "FLUX-1.1-pro",
+      "fluxModelVersion": "latest",
+      "fluxCapacityTPM": 10,
+      "deepseekModelName": "DeepSeek-V3.1",
+      "deepseekModelVersion": "latest",
+      "deepseekCapacityTPM": 50
+    }
+  ],
+  "definitions": {
+    "tpmCapacity": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "Tokens per minute capacity allocation"
+    },
+    "modelVersion": {
+      "type": "string",
+      "pattern": "^(\\d{4}-\\d{2}-\\d{2}|latest)$",
+      "description": "Model version in YYYY-MM-DD format or 'latest'"
+    },
+    "azureResourceName": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$",
+      "minLength": 2,
+      "maxLength": 64,
+      "description": "Azure resource naming convention"
+    }
+  },
+  "x-validation-rules": {
+    "totalCapacity": "Sum of all *CapacityTPM must equal 260",
+    "locationSupport": "location must support all 5 model types",
+    "nameUniqueness": "hubName and aiServicesName must be globally unique; projectName must be subscription-unique"
+  }
+}

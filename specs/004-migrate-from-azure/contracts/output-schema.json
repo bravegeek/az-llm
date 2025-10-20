@@ -1,0 +1,203 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://az-llm.example.com/schemas/ai-foundry-output-v1.json",
+  "title": "Azure AI Foundry Deployment Outputs",
+  "description": "Output schema for Azure AI Foundry infrastructure deployment results (compatible with .env.azure-openai format)",
+  "type": "object",
+  "required": [
+    "hubResourceId",
+    "projectResourceId",
+    "aiServicesEndpoint",
+    "aiServicesKey",
+    "gpt41Deployment",
+    "gpt41MiniDeployment",
+    "gpt4oDeployment",
+    "fluxDeployment",
+    "deepseekDeployment"
+  ],
+  "properties": {
+    "hubResourceId": {
+      "type": "string",
+      "description": "Azure Resource Manager ID of the AI Foundry Hub",
+      "pattern": "^/subscriptions/[0-9a-f-]{36}/resourceGroups/[^/]+/providers/Microsoft\\.MachineLearningServices/workspaces/[^/]+$",
+      "examples": [
+        "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-ai-foundry/providers/Microsoft.MachineLearningServices/workspaces/bg-llm-hub"
+      ]
+    },
+    "projectResourceId": {
+      "type": "string",
+      "description": "Azure Resource Manager ID of the AI Foundry Project",
+      "pattern": "^/subscriptions/[0-9a-f-]{36}/resourceGroups/[^/]+/providers/Microsoft\\.MachineLearningServices/workspaces/[^/]+$",
+      "examples": [
+        "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-ai-foundry/providers/Microsoft.MachineLearningServices/workspaces/bg-llm-project"
+      ]
+    },
+    "aiServicesEndpoint": {
+      "type": "string",
+      "description": "AI Services inference endpoint URL",
+      "format": "uri",
+      "pattern": "^https://[a-z0-9-]+\\.[a-z0-9]+\\.inference\\.ml\\.azure\\.com/?$",
+      "examples": [
+        "https://bg-llm-ai.eastus2.inference.ml.azure.com/"
+      ]
+    },
+    "aiServicesKey": {
+      "type": "string",
+      "description": "AI Services access key (workspace-level, sensitive)",
+      "minLength": 32,
+      "maxLength": 128,
+      "examples": [
+        "********************************"
+      ],
+      "x-sensitive": true
+    },
+    "gpt41Deployment": {
+      "$ref": "#/definitions/modelDeployment",
+      "description": "GPT-4.1 deployment details",
+      "examples": [
+        {
+          "name": "gpt-41-deployment",
+          "model": "gpt-4.1",
+          "version": "2025-04-14",
+          "capacity": 50
+        }
+      ]
+    },
+    "gpt41MiniDeployment": {
+      "$ref": "#/definitions/modelDeployment",
+      "description": "GPT-4.1-Mini deployment details",
+      "examples": [
+        {
+          "name": "gpt-41-mini-deployment",
+          "model": "gpt-4o-mini",
+          "version": "2024-07-18",
+          "capacity": 100
+        }
+      ]
+    },
+    "gpt4oDeployment": {
+      "$ref": "#/definitions/modelDeployment",
+      "description": "GPT-4o deployment details",
+      "examples": [
+        {
+          "name": "gpt-4o-deployment",
+          "model": "gpt-4o",
+          "version": "2024-08-06",
+          "capacity": 50
+        }
+      ]
+    },
+    "fluxDeployment": {
+      "$ref": "#/definitions/modelDeployment",
+      "description": "FLUX-1.1-pro deployment details",
+      "examples": [
+        {
+          "name": "flux-deployment",
+          "model": "FLUX-1.1-pro",
+          "version": "latest",
+          "capacity": 10
+        }
+      ]
+    },
+    "deepseekDeployment": {
+      "$ref": "#/definitions/modelDeployment",
+      "description": "DeepSeek-V3.1 deployment details",
+      "examples": [
+        {
+          "name": "deepseek-deployment",
+          "model": "DeepSeek-V3.1",
+          "version": "latest",
+          "capacity": 50
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "modelDeployment": {
+      "type": "object",
+      "description": "Model deployment details",
+      "required": ["name", "model", "version", "capacity"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Deployment name (used in API calls)",
+          "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$",
+          "minLength": 2,
+          "maxLength": 64,
+          "examples": ["gpt-41-deployment", "gpt-4o-deployment"]
+        },
+        "model": {
+          "type": "string",
+          "description": "Model identifier",
+          "examples": ["gpt-4.1", "gpt-4o", "gpt-4o-mini", "FLUX-1.1-pro", "DeepSeek-V3.1"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Model version",
+          "pattern": "^(\\d{4}-\\d{2}-\\d{2}|latest)$",
+          "examples": ["2025-04-14", "2024-08-06", "latest"]
+        },
+        "capacity": {
+          "type": "integer",
+          "description": "Deployment capacity in tokens per minute (TPM)",
+          "minimum": 1,
+          "maximum": 1000,
+          "examples": [50, 100, 10]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "x-env-mapping": {
+    "description": "Mapping to .env.azure-openai format for client compatibility",
+    "variables": {
+      "AZURE_OPENAI_ENDPOINT": "aiServicesEndpoint",
+      "AZURE_OPENAI_KEY": "aiServicesKey",
+      "AZURE_OPENAI_DEPLOYMENT_GPT41": "gpt41Deployment.name",
+      "AZURE_OPENAI_DEPLOYMENT_GPT41_MINI": "gpt41MiniDeployment.name",
+      "AZURE_OPENAI_DEPLOYMENT_GPT4O": "gpt4oDeployment.name",
+      "AZURE_OPENAI_DEPLOYMENT_FLUX": "fluxDeployment.name",
+      "AZURE_OPENAI_DEPLOYMENT_DEEPSEEK": "deepseekDeployment.name"
+    },
+    "example": "AZURE_OPENAI_ENDPOINT=https://bg-llm-ai.eastus2.inference.ml.azure.com/\nAZURE_OPENAI_KEY=********************************\nAZURE_OPENAI_DEPLOYMENT_GPT41=gpt-41-deployment\nAZURE_OPENAI_DEPLOYMENT_GPT41_MINI=gpt-41-mini-deployment\nAZURE_OPENAI_DEPLOYMENT_GPT4O=gpt-4o-deployment\nAZURE_OPENAI_DEPLOYMENT_FLUX=flux-deployment\nAZURE_OPENAI_DEPLOYMENT_DEEPSEEK=deepseek-deployment"
+  },
+  "examples": [
+    {
+      "hubResourceId": "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-ai-foundry/providers/Microsoft.MachineLearningServices/workspaces/bg-llm-hub",
+      "projectResourceId": "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-ai-foundry/providers/Microsoft.MachineLearningServices/workspaces/bg-llm-project",
+      "aiServicesEndpoint": "https://bg-llm-ai.eastus2.inference.ml.azure.com/",
+      "aiServicesKey": "********************************",
+      "gpt41Deployment": {
+        "name": "gpt-41-deployment",
+        "model": "gpt-4.1",
+        "version": "2025-04-14",
+        "capacity": 50
+      },
+      "gpt41MiniDeployment": {
+        "name": "gpt-41-mini-deployment",
+        "model": "gpt-4o-mini",
+        "version": "2024-07-18",
+        "capacity": 100
+      },
+      "gpt4oDeployment": {
+        "name": "gpt-4o-deployment",
+        "model": "gpt-4o",
+        "version": "2024-08-06",
+        "capacity": 50
+      },
+      "fluxDeployment": {
+        "name": "flux-deployment",
+        "model": "FLUX-1.1-pro",
+        "version": "latest",
+        "capacity": 10
+      },
+      "deepseekDeployment": {
+        "name": "deepseek-deployment",
+        "model": "DeepSeek-V3.1",
+        "version": "latest",
+        "capacity": 50
+      }
+    }
+  ]
+}
