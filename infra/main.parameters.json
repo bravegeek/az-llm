@@ -5,37 +5,43 @@
     "location": {
       "value": "eastus2"
     },
-    "openAIAccountName": {
-      "value": "bg-llm-minimal"
+    "aiServicesName": {
+      "value": "bg-llm-foundry"
     },
-    "aiFoundryProjectName": {
-      "value": "bg-llm-01"
+    "customSubDomain": {
+      "value": "bg-llm-foundry"
     },
-    "gpt41ModelName": {
-      "value": "gpt-4.1"
+    "projectName": {
+      "value": "foundry-project"
     },
-    "gpt41ModelVersion": {
-      "value": "2025-04-14"
+    "projectDisplayName": {
+      "value": "BG LLM AI Foundry Project"
     },
-    "gpt41CapacityTPM": {
+    "gpt4DeploymentName": {
+      "value": "gpt-4-deployment"
+    },
+    "gpt4Version": {
+      "value": "1106-preview"
+    },
+    "gpt4Capacity": {
       "value": 50
     },
-    "gpt41MiniModelName": {
-      "value": "gpt-4o-mini"
+    "gpt4oMiniDeploymentName": {
+      "value": "gpt-4o-mini-deployment"
     },
-    "gpt41MiniModelVersion": {
-      "value": "2024-07-18"
+    "gpt4oMiniVersion": {
+      "value": "2025-04-14"
     },
-    "gpt41MiniCapacityTPM": {
+    "gpt4oMiniCapacity": {
       "value": 100
     },
-    "gpt4oModelName": {
-      "value": "gpt-4o"
+    "gpt4oDeploymentName": {
+      "value": "gpt-4o-deployment"
     },
-    "gpt4oModelVersion": {
+    "gpt4oVersion": {
       "value": "2024-08-06"
     },
-    "gpt4oCapacityTPM": {
+    "gpt4oCapacity": {
       "value": 50
     }
   }

@@ -1,146 +1,116 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://az-llm.example.com/schemas/ai-foundry-input-v1.json",
-  "title": "Azure AI Foundry Deployment Parameters",
-  "description": "Input parameter schema for Azure AI Foundry infrastructure deployment (Hub + Project + 5 Model Deployments)",
+  "$id": "https://az-llm.example.com/schemas/ai-foundry-hubless-input-v2.json",
+  "title": "Azure AI Foundry Hub-less Deployment Parameters",
+  "description": "Input parameter schema for Azure AI Foundry hub-less infrastructure deployment (AIServices + Project + 3 Standard Model Deployments). FLUX and DeepSeek are serverless (manual deployment).",
   "type": "object",
   "required": [
     "location",
-    "hubName",
-    "projectName",
-    "aiServicesName"
+    "aiServicesName",
+    "customSubDomain",
+    "projectName"
   ],
   "properties": {
     "location": {
       "type": "string",
-      "description": "Azure region for deployment (must support all 5 models)",
+      "description": "Azure region for deployment (must support gpt-4, gpt-4o-mini, gpt-4o)",
       "pattern": "^[a-z0-9]+$",
       "examples": ["eastus2", "westus", "northcentralus"],
       "minLength": 4,
       "maxLength": 20
     },
-    "hubName": {
-      "type": "string",
-      "description": "Globally unique name for AI Foundry Hub (ML Workspace kind=Hub)",
-      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{1,31}[a-zA-Z0-9])?$",
-      "minLength": 3,
-      "maxLength": 33,
-      "examples": ["bg-llm-hub", "my-ai-hub-01"]
-    },
-    "projectName": {
-      "type": "string",
-      "description": "Subscription-unique name for AI Foundry Project (ML Workspace kind=Project)",
-      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{1,31}[a-zA-Z0-9])?$",
-      "minLength": 3,
-      "maxLength": 33,
-      "examples": ["bg-llm-project", "my-ai-project-01"]
-    },
     "aiServicesName": {
       "type": "string",
-      "description": "Globally unique name for AI Services account (hosts model deployments)",
+      "description": "Globally unique name for AI Foundry AIServices account (CognitiveServices kind=AIServices)",
       "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{0,62}[a-zA-Z0-9])?$",
       "minLength": 2,
       "maxLength": 64,
-      "examples": ["bg-llm-ai", "my-ai-services-01"]
+      "examples": ["ai-foundry-prod", "my-ai-services-01"]
     },
-    "gpt41ModelName": {
+    "customSubDomain": {
       "type": "string",
-      "description": "GPT-4.1 model identifier",
-      "default": "gpt-4.1",
-      "examples": ["gpt-4.1"]
+      "description": "Globally unique subdomain for AI Services endpoint (e.g., https://<subdomain>.cognitiveservices.azure.com/)",
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+      "minLength": 2,
+      "maxLength": 63,
+      "examples": ["ai-prod", "my-ai-sub"]
     },
-    "gpt41ModelVersion": {
+    "projectName": {
       "type": "string",
-      "description": "GPT-4.1 model version",
-      "default": "2025-04-14",
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-      "examples": ["2025-04-14"]
+      "description": "Name for AI Foundry Project (unique within AIServices account)",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{1,22}[a-zA-Z0-9])?$",
+      "minLength": 3,
+      "maxLength": 24,
+      "examples": ["foundry-project", "ai-project-01"]
     },
-    "gpt41CapacityTPM": {
+    "projectDisplayName": {
+      "type": "string",
+      "description": "Friendly display name for project (shown in portal)",
+      "minLength": 1,
+      "maxLength": 100,
+      "default": "AI Foundry Project",
+      "examples": ["Production AI Project", "Dev AI Environment"]
+    },
+    "gpt4DeploymentName": {
+      "type": "string",
+      "description": "Deployment name for GPT-4 model",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$",
+      "default": "gpt-4-deployment",
+      "examples": ["gpt-4-deployment", "gpt4-prod"]
+    },
+    "gpt4Version": {
+      "type": "string",
+      "description": "GPT-4 model version (format: YYYY-MM-DD or version identifier)",
+      "default": "1106-preview",
+      "examples": ["1106-preview", "0613", "turbo-2024-04-09"]
+    },
+    "gpt4Capacity": {
       "type": "integer",
-      "description": "GPT-4.1 capacity in tokens per minute (TPM)",
+      "description": "GPT-4 capacity in thousands of tokens per minute (TPM)",
       "default": 50,
       "minimum": 1,
       "maximum": 1000,
       "examples": [50, 100]
     },
-    "gpt41MiniModelName": {
+    "gpt4oMiniDeploymentName": {
       "type": "string",
-      "description": "GPT-4.1-Mini (gpt-4o-mini) model identifier",
-      "default": "gpt-4o-mini",
-      "examples": ["gpt-4o-mini"]
+      "description": "Deployment name for GPT-4o-mini model",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$",
+      "default": "gpt-4o-mini-deployment",
+      "examples": ["gpt-4o-mini-deployment", "gpt4omini-prod"]
     },
-    "gpt41MiniModelVersion": {
+    "gpt4oMiniVersion": {
       "type": "string",
-      "description": "GPT-4.1-Mini model version",
-      "default": "2024-07-18",
+      "description": "GPT-4o-mini model version (format: YYYY-MM-DD)",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-      "examples": ["2024-07-18"]
+      "default": "2025-04-14",
+      "examples": ["2025-04-14", "2024-07-18"]
     },
-    "gpt41MiniCapacityTPM": {
+    "gpt4oMiniCapacity": {
       "type": "integer",
-      "description": "GPT-4.1-Mini capacity in tokens per minute (TPM)",
+      "description": "GPT-4o-mini capacity in thousands of tokens per minute (TPM)",
       "default": 100,
       "minimum": 1,
       "maximum": 1000,
       "examples": [100, 200]
     },
-    "gpt4oModelName": {
+    "gpt4oDeploymentName": {
       "type": "string",
-      "description": "GPT-4o model identifier",
-      "default": "gpt-4o",
-      "examples": ["gpt-4o"]
+      "description": "Deployment name for GPT-4o model",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$",
+      "default": "gpt-4o-deployment",
+      "examples": ["gpt-4o-deployment", "gpt4o-prod"]
     },
-    "gpt4oModelVersion": {
+    "gpt4oVersion": {
       "type": "string",
-      "description": "GPT-4o model version",
-      "default": "2024-08-06",
+      "description": "GPT-4o model version (format: YYYY-MM-DD)",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-      "examples": ["2024-08-06"]
+      "default": "2024-08-06",
+      "examples": ["2024-08-06", "2024-05-13"]
     },
-    "gpt4oCapacityTPM": {
+    "gpt4oCapacity": {
       "type": "integer",
-      "description": "GPT-4o capacity in tokens per minute (TPM)",
-      "default": 50,
-      "minimum": 1,
-      "maximum": 1000,
-      "examples": [50, 100]
-    },
-    "fluxModelName": {
-      "type": "string",
-      "description": "FLUX-1.1-pro model identifier",
-      "default": "FLUX-1.1-pro",
-      "examples": ["FLUX-1.1-pro"]
-    },
-    "fluxModelVersion": {
-      "type": "string",
-      "description": "FLUX model version",
-      "default": "latest",
-      "examples": ["latest", "1.1"]
-    },
-    "fluxCapacityTPM": {
-      "type": "integer",
-      "description": "FLUX capacity in tokens per minute (TPM)",
-      "default": 10,
-      "minimum": 1,
-      "maximum": 1000,
-      "examples": [10, 20]
-    },
-    "deepseekModelName": {
-      "type": "string",
-      "description": "DeepSeek-V3.1 model identifier",
-      "default": "DeepSeek-V3.1",
-      "examples": ["DeepSeek-V3.1"]
-    },
-    "deepseekModelVersion": {
-      "type": "string",
-      "description": "DeepSeek model version",
-      "default": "latest",
-      "examples": ["latest", "3.1"]
-    },
-    "deepseekCapacityTPM": {
-      "type": "integer",
-      "description": "DeepSeek capacity in tokens per minute (TPM)",
+      "description": "GPT-4o capacity in thousands of tokens per minute (TPM)",
       "default": 50,
       "minimum": 1,
       "maximum": 1000,
@@ -151,24 +121,19 @@
   "examples": [
     {
       "location": "eastus2",
-      "hubName": "bg-llm-hub",
-      "projectName": "bg-llm-project",
-      "aiServicesName": "bg-llm-ai",
-      "gpt41ModelName": "gpt-4.1",
-      "gpt41ModelVersion": "2025-04-14",
-      "gpt41CapacityTPM": 50,
-      "gpt41MiniModelName": "gpt-4o-mini",
-      "gpt41MiniModelVersion": "2024-07-18",
-      "gpt41MiniCapacityTPM": 100,
-      "gpt4oModelName": "gpt-4o",
-      "gpt4oModelVersion": "2024-08-06",
-      "gpt4oCapacityTPM": 50,
-      "fluxModelName": "FLUX-1.1-pro",
-      "fluxModelVersion": "latest",
-      "fluxCapacityTPM": 10,
-      "deepseekModelName": "DeepSeek-V3.1",
-      "deepseekModelVersion": "latest",
-      "deepseekCapacityTPM": 50
+      "aiServicesName": "ai-foundry-prod",
+      "customSubDomain": "ai-prod",
+      "projectName": "foundry-project",
+      "projectDisplayName": "Production AI Project",
+      "gpt4DeploymentName": "gpt-4-deployment",
+      "gpt4Version": "1106-preview",
+      "gpt4Capacity": 50,
+      "gpt4oMiniDeploymentName": "gpt-4o-mini-deployment",
+      "gpt4oMiniVersion": "2025-04-14",
+      "gpt4oMiniCapacity": 100,
+      "gpt4oDeploymentName": "gpt-4o-deployment",
+      "gpt4oVersion": "2024-08-06",
+      "gpt4oCapacity": 50
     }
   ],
   "definitions": {
@@ -176,24 +141,30 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 1000,
-      "description": "Tokens per minute capacity allocation"
+      "description": "Tokens per minute capacity allocation (in thousands)"
     },
     "modelVersion": {
       "type": "string",
-      "pattern": "^(\\d{4}-\\d{2}-\\d{2}|latest)$",
-      "description": "Model version in YYYY-MM-DD format or 'latest'"
+      "pattern": "^(\\d{4}-\\d{2}-\\d{2}|[a-zA-Z0-9-]+)$",
+      "description": "Model version in YYYY-MM-DD format or version identifier"
     },
-    "azureResourceName": {
+    "deploymentName": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$",
-      "minLength": 2,
+      "minLength": 1,
       "maxLength": 64,
-      "description": "Azure resource naming convention"
+      "description": "Deployment name (alphanumeric with hyphens)"
     }
   },
   "x-validation-rules": {
-    "totalCapacity": "Sum of all *CapacityTPM must equal 260",
-    "locationSupport": "location must support all 5 model types",
-    "nameUniqueness": "hubName and aiServicesName must be globally unique; projectName must be subscription-unique"
+    "totalCapacity": "gpt4Capacity + gpt4oMiniCapacity + gpt4oCapacity = 200 (recommended: 50+100+50)",
+    "locationSupport": "location must support gpt-4, gpt-4o-mini, and gpt-4o models",
+    "nameUniqueness": "aiServicesName and customSubDomain must be globally unique; projectName must be unique within account",
+    "serverlessModels": "FLUX-1.1-pro and DeepSeek-V3.1 are NOT included in this schema - deploy manually via AI Foundry portal after Bicep deployment"
+  },
+  "x-bicep-mapping": {
+    "aiServices": "Microsoft.CognitiveServices/accounts@2025-06-01 (kind: AIServices)",
+    "project": "Microsoft.CognitiveServices/accounts/projects@2025-06-01",
+    "deployments": "Microsoft.CognitiveServices/accounts/deployments@2025-06-01 (3 instances)"
   }
 }

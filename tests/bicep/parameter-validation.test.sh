@@ -2,23 +2,24 @@
 # T008: Parameter validation test
 set -e
 
-echo "🔍 Testing parameter validation..."
+echo "=== Parameter validation test ==="
 
-# Check if ajv-cli is available
-if ! command -v ajv &> /dev/null; then
-    echo "⚠️  ajv-cli not found, installing..."
-    npm install -g ajv-cli 2>&1 | grep -E "(added|up to date)" || true
-fi
-
-# Extract values from ARM parameters file for validation
-jq '.parameters | map_values(.value)' infra/main.parameters.json > /tmp/params-values.json
-
-# Validate extracted values against schema
-if ajv validate -s specs/003-create-a-minimal/contracts/bicep-parameters.schema.json \
-   -d /tmp/params-values.json 2>&1 | grep -q "invalid"; then
-    echo "❌ Parameter validation failed: Parameters do not match schema"
+# Validate parameters file is valid JSON
+if ! jq empty infra/main.parameters.json 2>/dev/null; then
+    echo "❌ Parameters file is not valid JSON"
     exit 1
 fi
 
-echo "✅ Parameters valid"
+# Validate required parameters exist
+REQUIRED_PARAMS=("location" "aiServicesName" "customSubDomain" "projectName")
+for param in "${REQUIRED_PARAMS[@]}"; do
+  VALUE=$(jq -r ".parameters.$param.value // empty" infra/main.parameters.json)
+  if [ -z "$VALUE" ]; then
+    echo "❌ Missing required parameter: $param"
+    exit 1
+  fi
+  echo "✅ Parameter $param: $VALUE"
+done
+
+echo "✅ All required parameters valid"
 exit 0

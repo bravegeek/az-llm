@@ -1,7 +1,7 @@
-// Minimal single-file Bicep for Azure OpenAI provisioning
-// Feature: 003-create-a-minimal
-// Deploys 3 models: gpt-4.1, gpt-4o-mini, gpt-4o
-// Total TPM capacity: 200 (50+100+50)
+// Hub-less Azure AI Foundry infrastructure (Feature 004)
+// AIServices account (kind: AIServices) + Project + 3 Model Deployments
+// Total TPM: 200K (50K gpt-4 + 100K gpt-4o-mini + 50K gpt-4o)
+// FLUX-1.1-pro and DeepSeek-V3.1 are serverless (manual deployment via portal)
 
 // ============================================================================
 // PARAMETERS
@@ -10,206 +10,205 @@
 @description('Azure region for deployment')
 param location string
 
-@description('Globally unique name for OpenAI account')
+@description('Globally unique name for AI Foundry AIServices account')
 @minLength(2)
 @maxLength(64)
-param openAIAccountName string
+param aiServicesName string
 
-@description('Optional AI Foundry project name for organizational tagging')
-param aiFoundryProjectName string = ''
+@description('Globally unique subdomain for AI Services endpoint')
+@minLength(2)
+@maxLength(63)
+param customSubDomain string
 
-// GPT-4.1 (Primary GPT model)
-@description('GPT-4.1 model name')
-param gpt41ModelName string = 'gpt-4.1'
+@description('Name for AI Foundry Project (unique within account)')
+@minLength(3)
+@maxLength(24)
+param projectName string
 
-@description('GPT-4.1 model version')
-param gpt41ModelVersion string = '2025-04-14'
+@description('Friendly display name for project')
+param projectDisplayName string = 'AI Foundry Project'
 
-@description('GPT-4.1 capacity (TPM)')
+// GPT-4 Model Configuration
+@description('GPT-4 deployment name')
+param gpt4DeploymentName string = 'gpt-4-deployment'
+
+@description('GPT-4 model version')
+param gpt4Version string = '1106-preview'
+
+@description('GPT-4 capacity in thousands of TPM')
 @minValue(1)
 @maxValue(1000)
-param gpt41CapacityTPM int = 50
+param gpt4Capacity int = 50
 
-// GPT-4.1-Mini (Cost-effective GPT)
-@description('GPT-4o-mini model name')
-param gpt41MiniModelName string = 'gpt-4o-mini'
+// GPT-4o-mini Model Configuration
+@description('GPT-4o-mini deployment name')
+param gpt4oMiniDeploymentName string = 'gpt-4o-mini-deployment'
 
 @description('GPT-4o-mini model version')
-param gpt41MiniModelVersion string = '2024-07-18'
+param gpt4oMiniVersion string = '2025-04-14'
 
-@description('GPT-4o-mini capacity (TPM)')
+@description('GPT-4o-mini capacity in thousands of TPM')
 @minValue(1)
 @maxValue(1000)
-param gpt41MiniCapacityTPM int = 100
+param gpt4oMiniCapacity int = 100
 
-// GPT-4o (High-performance multimodal)
-@description('GPT-4o model name')
-param gpt4oModelName string = 'gpt-4o'
+// GPT-4o Model Configuration
+@description('GPT-4o deployment name')
+param gpt4oDeploymentName string = 'gpt-4o-deployment'
 
 @description('GPT-4o model version')
-param gpt4oModelVersion string = '2024-08-06'
+param gpt4oVersion string = '2024-08-06'
 
-@description('GPT-4o capacity (TPM)')
+@description('GPT-4o capacity in thousands of TPM')
 @minValue(1)
 @maxValue(1000)
-param gpt4oCapacityTPM int = 50
-
-// NOTE: FLUX and DeepSeek models are not available in Azure OpenAI
-// Uncomment and update when these models become available in your region
-
-// // FLUX-1.1-pro (Image generation)
-// @description('FLUX-1.1-pro model name')
-// param fluxModelName string = 'FLUX-1.1-pro'
-//
-// @description('FLUX-1.1-pro model version')
-// param fluxModelVersion string = '2024-11-04'
-//
-// @description('FLUX-1.1-pro capacity (TPM)')
-// @minValue(1)
-// @maxValue(1000)
-// param fluxCapacityTPM int = 10
-
-// // DeepSeek-V3.1 (Alternative LLM)
-// @description('DeepSeek-V3.1 model name')
-// param deepseekModelName string = 'DeepSeek-V3.1'
-//
-// @description('DeepSeek-V3.1 model version')
-// param deepseekModelVersion string = '2024-05-01'
-//
-// @description('DeepSeek-V3.1 capacity (TPM)')
-// @minValue(1)
-// @maxValue(1000)
-// param deepseekCapacityTPM int = 50
+param gpt4oCapacity int = 50
 
 // ============================================================================
 // RESOURCES
 // ============================================================================
 
-resource openAIAccount 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: openAIAccountName
+// T015: AI Foundry AIServices Account (hub-less)
+resource aiServices 'Microsoft.CognitiveServices/accounts@2024-06-01-preview' = {
+  name: aiServicesName
   location: location
-  kind: 'OpenAI'
+  kind: 'AIServices'
   sku: {
     name: 'S0'
   }
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
-    customSubDomainName: openAIAccountName
+    customSubDomainName: customSubDomain
+    allowProjectManagement: true
     publicNetworkAccess: 'Enabled'
+    disableLocalAuth: false
   }
   tags: {
-    aiFoundryProject: aiFoundryProjectName
-    deployedBy: 'bicep-minimal'
-    feature: '003-create-a-minimal'
+    feature: '004-migrate-from-azure'
+    architecture: 'hub-less'
   }
 }
 
-// Model Deployment 1: GPT-4.1 (Primary)
-resource gpt41Deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-  parent: openAIAccount
-  name: 'gpt-4.1'
+// T016: AI Foundry Project (child of AIServices)
+resource project 'Microsoft.CognitiveServices/accounts/projects@2024-06-01-preview' = {
+  parent: aiServices
+  name: projectName
+  location: location
+  properties: {
+    displayName: projectDisplayName
+    description: 'Hub-less AI Foundry project for 3 model deployments'
+  }
+}
+
+// T017: GPT-4 Deployment
+resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-06-01-preview' = {
+  parent: aiServices
+  name: gpt4DeploymentName
   sku: {
     name: 'Standard'
-    capacity: gpt41CapacityTPM
+    capacity: gpt4Capacity
   }
   properties: {
     model: {
       format: 'OpenAI'
-      name: gpt41ModelName
-      version: gpt41ModelVersion
+      name: 'gpt-4'
+      version: gpt4Version
     }
+    versionUpgradeOption: 'OnceCurrentVersionExpired'
+    raiPolicyName: 'Microsoft.Default'
   }
 }
 
-// Model Deployment 2: GPT-4.1-Mini (Cost-effective)
-resource gpt41MiniDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-  parent: openAIAccount
-  name: 'gpt-4.1-mini'
+// T018: GPT-4o-mini Deployment
+resource gpt4oMiniDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-06-01-preview' = {
+  parent: aiServices
+  name: gpt4oMiniDeploymentName
   sku: {
-    name: 'Standard'
-    capacity: gpt41MiniCapacityTPM
+    name: 'DataZoneStandard'
+    capacity: gpt4oMiniCapacity
   }
   properties: {
     model: {
       format: 'OpenAI'
-      name: gpt41MiniModelName
-      version: gpt41MiniModelVersion
+      name: 'gpt-4o-mini'
+      version: gpt4oMiniVersion
     }
+    versionUpgradeOption: 'OnceCurrentVersionExpired'
+    raiPolicyName: 'Microsoft.Default'
   }
 }
 
-// Model Deployment 3: GPT-4o (High-performance)
-resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-  parent: openAIAccount
-  name: 'gpt-4o'
+// T019: GPT-4o Deployment
+resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-06-01-preview' = {
+  parent: aiServices
+  name: gpt4oDeploymentName
   sku: {
     name: 'Standard'
-    capacity: gpt4oCapacityTPM
+    capacity: gpt4oCapacity
   }
   properties: {
     model: {
       format: 'OpenAI'
-      name: gpt4oModelName
-      version: gpt4oModelVersion
+      name: 'gpt-4o'
+      version: gpt4oVersion
     }
+    versionUpgradeOption: 'OnceCurrentVersionExpired'
+    raiPolicyName: 'Microsoft.Default'
   }
 }
-
-// // Model Deployment 4: FLUX-1.1-pro (Image generation) - NOT AVAILABLE
-// resource fluxDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-//   parent: openAIAccount
-//   name: 'FLUX-1.1-pro'
-//   sku: {
-//     name: 'Standard'
-//     capacity: fluxCapacityTPM
-//   }
-//   properties: {
-//     model: {
-//       format: 'OpenAI'
-//       name: fluxModelName
-//       version: fluxModelVersion
-//     }
-//   }
-// }
-
-// // Model Deployment 5: DeepSeek-V3.1 (Alternative LLM) - NOT AVAILABLE
-// resource deepseekDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-//   parent: openAIAccount
-//   name: 'DeepSeek-V3.1'
-//   sku: {
-//     name: 'Standard'
-//     capacity: deepseekCapacityTPM
-//   }
-//   properties: {
-//     model: {
-//       format: 'OpenAI'
-//       name: deepseekModelName
-//       version: deepseekModelVersion
-//     }
-//   }
-// }
 
 // ============================================================================
-// OUTPUTS
+// OUTPUTS (T020)
 // ============================================================================
 
-@description('Azure OpenAI API endpoint URL')
-output endpoint string = openAIAccount.properties.endpoint
+@description('AI Services resource ID')
+output aiServicesResourceId string = aiServices.id
 
-@description('Primary access key for API authentication')
-output apiKey string = openAIAccount.listKeys().key1
+@description('Project resource ID')
+output projectResourceId string = project.id
 
-@description('Full Azure resource ID')
-output resourceId string = openAIAccount.id
+@description('AI Services endpoint URL')
+output aiServicesEndpoint string = 'https://${customSubDomain}.openai.azure.com/'
 
-@description('Array of 3 model deployment names')
-output deploymentNames array = [
-  gpt41Deployment.name
-  gpt41MiniDeployment.name
-  gpt4oDeployment.name
-]
+@description('GPT-4 deployment details')
+output gpt4Deployment object = {
+  deploymentName: gpt4Deployment.name
+  model: 'gpt-4'
+  version: gpt4Version
+  capacity: gpt4Capacity
+  endpoint: 'https://${customSubDomain}.openai.azure.com/'
+}
 
-@description('Deployed Azure region')
-output location string = location
+@description('GPT-4o-mini deployment details')
+output gpt4oMiniDeployment object = {
+  deploymentName: gpt4oMiniDeployment.name
+  model: 'gpt-4o-mini'
+  version: gpt4oMiniVersion
+  capacity: gpt4oMiniCapacity
+  endpoint: 'https://${customSubDomain}.openai.azure.com/'
+}
 
-@description('OpenAI account name')
-output accountName string = openAIAccount.name
+@description('GPT-4o deployment details')
+output gpt4oDeployment object = {
+  deploymentName: gpt4oDeployment.name
+  model: 'gpt-4o'
+  version: gpt4oVersion
+  capacity: gpt4oCapacity
+  endpoint: 'https://${customSubDomain}.openai.azure.com/'
+}
+
+@description('FLUX-1.1-pro serverless model placeholder')
+output fluxDeployment object = {
+  deploymentStatus: 'manual-required'
+  model: 'FLUX-1.1-pro'
+  deploymentInstructions: 'Navigate to https://ai.azure.com, select project, go to Model Catalog, search FLUX-1.1-pro, click Deploy → Serverless API'
+}
+
+@description('DeepSeek-V3.1 serverless model placeholder')
+output deepseekDeployment object = {
+  deploymentStatus: 'manual-required'
+  model: 'DeepSeek-V3.1'
+  deploymentInstructions: 'Navigate to https://ai.azure.com, select project, go to Model Catalog, search DeepSeek-V3.1, click Deploy → Serverless API'
+}

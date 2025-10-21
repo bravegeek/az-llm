@@ -1,234 +1,359 @@
-# Research: Azure AI Foundry Migration
+# Research: Azure AI Foundry Hub-less Deployment
 
 **Feature**: 004-migrate-from-azure
-**Date**: 2025-10-19
+**Date**: 2025-10-20
 **Status**: Complete
 
-## Research Topics
+## Overview
 
-### 1. Azure AI Foundry Resource Hierarchy
+This research identifies the correct Azure AI Foundry hub-less architecture (2025) for deploying 5 models to a clean resource group using single-file Bicep infrastructure.
 
-**Decision**: Use Microsoft.MachineLearningServices/workspaces for Hub and Project resources
+## 1. Azure AI Foundry Hub-less Architecture
 
-**Research Findings**:
-- **Hub Resource Type**: `Microsoft.MachineLearningServices/workspaces` with `kind: 'Hub'`
-- **Project Resource Type**: `Microsoft.MachineLearningServices/workspaces` with `kind: 'Project'`
-- **Deployment Resource Type**: Nested under Project workspace
+### Decision
+Use `Microsoft.CognitiveServices/accounts` with `kind: 'AIServices'` and child `projects` resource.
 
-**Required Properties**:
-- Hub:
-  - `name`: Globally unique, 3-33 characters, alphanumeric and hyphens
-  - `location`: Azure region
-  - `kind`: 'Hub'
-  - `sku`: { name: 'Basic' } (default tier)
-  - `identity`: { type: 'SystemAssigned' } for managed identity
+### Rationale
+- **Hub-less is simpler**: Recommended 2025 architecture for AI Foundry unless specific hub features needed
+- **Single-tier hierarchy**: AIServices account → Project (vs hub-based: Hub → Project → Deployments)
+- **Constitutional compliance**: Aligns with Simplicity-First principle
 
-- Project:
-  - `name`: Unique within subscription, 3-33 characters
-  - `location`: Must match Hub location
-  - `kind`: 'Project'
-  - `hubResourceId`: Reference to parent Hub
-  - `properties`: { friendlyName, description }
+### Bicep Resource Types
+- **Parent (AIServices Account)**: `Microsoft.CognitiveServices/accounts@2025-06-01`
+- **Child (Project)**: `Microsoft.CognitiveServices/accounts/projects@2025-06-01`
 
-- Model Deployment:
-  - Deployed via Azure OpenAI connection within AI Foundry Project
-  - Uses AI Services resource type for model deployments
-  - TPM capacity configuration same as standalone OpenAI
+### Bicep Example
+```bicep
+resource aiServices 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+  name: 'ai-foundry-${uniqueString(resourceGroup().id)}'
+  kind: 'AIServices'
+  location: location
+  sku: {
+    name: 'S0'  // Standard SKU
+  }
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    allowProjectManagement: true  // REQUIRED for hub-less projects
+    customSubDomainName: 'ai-${uniqueString(resourceGroup().id)}'  // REQUIRED
+    publicNetworkAccess: 'Enabled'
+    disableLocalAuth: false
+  }
+}
 
-**Rationale**: Azure AI Foundry uses Azure Machine Learning Services workspaces as the underlying resource type, with Hub and Project as specialization kinds. This maintains Azure-native integration while providing AI-specific management capabilities.
-
-**Alternatives Considered**:
-- Standalone Azure OpenAI (rejected - migration requirement)
-- Azure ML Classic (rejected - deprecated)
-
-### 2. Model Availability in AI Foundry
-
-**Decision**: Region-specific validation required; models availability varies by region
-
-**Research Findings**:
-- **gpt-4.1**: Available in eastus, eastus2, westus, westus3, northcentralus
-- **gpt-4.1-mini** (as gpt-4o-mini): Available in most regions including eastus2
-- **gpt-4o**: Available in eastus, eastus2, westus, westus3
-- **FLUX-1.1-pro**: Limited availability, check Azure AI Foundry model catalog per region
-- **DeepSeek-V3.1**: Availability via Azure AI model catalog, region-specific
-
-**Validation Approach**:
-- Use `az ml model list` to query available models in target region
-- Implement pre-deployment validation in validate.sh script
-- Fail fast with clear error if model unavailable
-
-**Rationale**: Model availability in AI Foundry is region-specific and changes over time. Pre-deployment validation prevents partial deployments and provides clear error messages.
-
-**Alternatives Considered**:
-- Assume all models available (rejected - causes deployment failures)
-- Deploy only available models (rejected - violates feature requirements)
-
-### 3. AI Foundry vs OpenAI Output Differences
-
-**Decision**: Output structure requires mapping; endpoints and authentication differ
-
-**Research Findings**:
-- **Endpoint Format**:
-  - OpenAI: `https://{account-name}.openai.azure.com/`
-  - AI Foundry: `https://{workspace-name}.{region}.inference.ml.azure.com/`
-
-- **Authentication**:
-  - Both support managed identity
-  - AI Foundry uses workspace-scoped keys
-  - Key retrieval via `az ml workspace show` command
-
-- **Output Structure**:
-  - Must include: hubResourceId, projectResourceId, workspaceName
-  - Model endpoints: per-deployment inference endpoints
-  - Keys: workspace-level keys (not deployment-specific)
-
-**Format Mapping**:
-```json
-{
-  "AZURE_OPENAI_ENDPOINT": "<ai-foundry-workspace-endpoint>",
-  "AZURE_OPENAI_KEY": "<workspace-key>",
-  "AZURE_OPENAI_DEPLOYMENT_GPT41": "<deployment-name>",
-  "AZURE_OPENAI_DEPLOYMENT_GPT41_MINI": "<deployment-name>",
-  "AZURE_OPENAI_DEPLOYMENT_GPT4O": "<deployment-name>",
-  "AZURE_OPENAI_DEPLOYMENT_FLUX": "<deployment-name>",
-  "AZURE_OPENAI_DEPLOYMENT_DEEPSEEK": "<deployment-name>"
+resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
+  parent: aiServices
+  name: 'foundry-project'
+  location: location
+  properties: {
+    displayName: 'AI Foundry Project'
+    description: 'Hub-less project for model deployments'
+  }
 }
 ```
 
-**Rationale**: Maintaining .env.azure-openai compatibility requires mapping AI Foundry workspace endpoints to OpenAI-compatible environment variable names. This minimizes client application changes.
+### Required Properties
+- **allowProjectManagement**: `true` (enables projects within AIServices account)
+- **customSubDomainName**: Unique subdomain for endpoints
+- **kind**: `'AIServices'` (not Hub or Project)
 
-**Alternatives Considered**:
-- New output format (rejected - breaks existing integrations)
-- Proxy layer (rejected - violates simplicity-first)
+### Auto-created Properties
+- Resource IDs (id, projectId)
+- Endpoints (from customSubDomainName)
+- System-assigned managed identity principal ID
+- Timestamps (createdTime, provisioningState)
 
-### 4. Bicep Resource Type Naming
+### Alternatives Considered
+- **Hub-based architecture** (`Microsoft.MachineLearningServices/workspaces`): Rejected - more complex, requires separate Hub and Project resources
+- **Standalone OpenAI resource**: Rejected - not AI Foundry architecture
 
-**Decision**: Use Microsoft.MachineLearningServices/workspaces with API version 2024-04-01 or later
+## 2. Model Deployment in AI Foundry
 
-**Research Findings**:
-- **API Version**: 2024-04-01 (stable), 2024-07-01-preview (latest features)
-- **Resource Types**:
-  ```bicep
-  // Hub
-  resource hub 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
-    name: hubName
-    location: location
-    kind: 'Hub'
-    sku: { name: 'Basic' }
-    identity: { type: 'SystemAssigned' }
-    properties: {
-      friendlyName: hubName
-      description: 'Azure AI Foundry Hub for LLM deployments'
-    }
+### Decision
+Deploy models as child resources of CognitiveServices account using `Microsoft.CognitiveServices/accounts/deployments`.
+
+### Rationale
+- **Direct to account**: Deployments are account-level resources (parent is AIServices, not project)
+- **Standard pattern**: Consistent with Azure OpenAI deployment model
+- **Bicep-native**: Fully supported in Bicep templates
+
+### Bicep Resource Type
+```bicep
+resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: aiServices  // Parent is AIServices account
+  name: 'gpt-41-deployment'
+  sku: {
+    name: 'Standard'  // or 'DataZoneStandard' for newer models
+    capacity: 50  // TPM in thousands (50 = 50K TPM)
   }
-
-  // Project
-  resource project 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
-    name: projectName
-    location: location
-    kind: 'Project'
-    identity: { type: 'SystemAssigned' }
-    properties: {
-      friendlyName: projectName
-      description: 'AI Foundry Project for model deployments'
-      hubResourceId: hub.id
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-4'
+      version: '1106-preview'
     }
+    versionUpgradeOption: 'OnceCurrentVersionExpired'
+    raiPolicyName: 'Microsoft.Default'
   }
+}
+```
 
-  // AI Services connection for model deployments
-  resource aiServices 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-    name: aiServicesName
-    location: location
-    kind: 'AIServices'
-    sku: { name: 'S0' }
-    properties: {
-      customSubDomainName: aiServicesName
-    }
+### TPM Allocation
+- **Property**: `sku.capacity`
+- **Unit**: Thousands of TPM (capacity: 50 = 50,000 TPM)
+- **Increment**: 1,000 TPM (use integers: 1, 10, 50, 100)
+- **Project allocation**: gpt-4.1=50, gpt-4.1-mini=100, gpt-4o=50, FLUX-1.1-pro=10, DeepSeek-V3.1=50
+
+### Model-Specific Versions
+- **gpt-4.1** (gpt-4): `name: 'gpt-4'`, `version: '1106-preview'`
+- **gpt-4.1-mini** (gpt-4o-mini): `name: 'gpt-4o-mini'`, `version: '2025-04-14'`
+- **gpt-4o**: `name: 'gpt-4o'`, `version: '2024-08-06'`
+- **FLUX-1.1-pro**: Serverless API (see note below)
+- **DeepSeek-V3.1**: Serverless API (see note below)
+
+### Critical Discovery: Serverless Models
+**FLUX-1.1-pro and DeepSeek-V3.1 use serverless API deployment, NOT standard deployments**:
+- **No TPM allocation**: Pay-per-token billing
+- **Different deployment type**: Not deployable via standard Bicep deployments
+- **Model catalog**: Available through Azure AI Foundry portal model catalog
+- **Deployment method**: Portal or `az ml` commands (not `az cognitiveservices`)
+
+**Impact on Bicep design**: Cannot deploy all 5 models via single Bicep template. Options:
+1. Deploy 3 standard models (gpt-4, gpt-4o-mini, gpt-4o) via Bicep
+2. Document FLUX and DeepSeek as manual portal deployments
+3. Use Azure ML CLI extension for serverless deployments (outside Bicep)
+
+**Recommended approach**: Document serverless models as manual post-deployment step to maintain <300 line Bicep constraint.
+
+### Alternatives Considered
+- **Deploy to project resource**: Rejected - Projects don't support child deployments
+- **MachineLearningServices deployments**: Rejected - Wrong resource hierarchy for hub-less
+- **Provisioned throughput (PTU)**: Rejected - More complex than standard TPM
+
+## 3. Model Availability Validation
+
+### Decision
+Use `az cognitiveservices model list` for standard models; document serverless models as manual validation.
+
+### Azure CLI Command
+```bash
+# List all models available in region
+az cognitiveservices model list \
+  --location eastus2 \
+  --output table
+
+# Check specific model
+az cognitiveservices model list \
+  --location eastus2 \
+  --query "[?name=='gpt-4o']" \
+  --output json
+```
+
+### Validation Script Pattern
+```bash
+#!/bin/bash
+REGION="eastus2"
+MODELS=("gpt-4o" "gpt-4o-mini" "gpt-4")
+
+for model in "${MODELS[@]}"; do
+  available=$(az cognitiveservices model list \
+    --location "$REGION" \
+    --query "[?name=='$model'].name" \
+    --output tsv)
+
+  if [ -z "$available" ]; then
+    echo "ERROR: Model $model not available in $REGION"
+    exit 1
+  fi
+  echo "✓ Model $model available"
+done
+```
+
+### Serverless Model Validation
+- **FLUX-1.1-pro**: Check Azure AI Foundry portal model catalog manually
+- **DeepSeek-V3.1**: Check Azure AI Foundry portal model catalog manually
+- **No CLI command**: Serverless models not queryable via `az cognitiveservices`
+- **Recommendation**: Document as manual prerequisite
+
+### Alternatives Considered
+- **REST API queries**: Rejected - requires authentication token management, complex
+- **Skip validation**: Rejected - causes deployment failures with unclear errors
+
+## 4. TPM Quota Validation
+
+### Decision
+Use `az cognitiveservices usage list` with region parameter in deployment script.
+
+### Azure CLI Command
+```bash
+# Check quota/usage for region
+az cognitiveservices usage list \
+  --location "eastus2" \
+  --output json
+```
+
+### Output Structure
+```json
+[
+  {
+    "currentValue": 0.0,
+    "limit": 100.0,
+    "name": {
+      "localizedValue": "Tokens Per Minute (thousands) - GPT-4o",
+      "value": "OpenAI.Standard.gpt-4o"
+    },
+    "unit": "Count"
   }
+]
+```
 
-  // Model deployments as child resources
-  resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-    parent: aiServices
-    name: deploymentName
-    properties: {
-      model: {
-        format: 'OpenAI'
-        name: modelName
-        version: modelVersion
-      }
-    }
-    sku: {
-      name: 'Standard'
-      capacity: capacityTPM
-    }
-  }
-  ```
+### Validation Script Pattern
+```bash
+check_quota() {
+  local model=$1
+  local required_tpm=$2
+  local region=$3
 
-**Rationale**: AI Foundry Hub and Project use ML Services workspaces with specific `kind` property. Model deployments use AI Services resource with deployments as child resources, maintaining OpenAI-compatible API surface.
+  local available=$(az cognitiveservices usage list \
+    --location "$region" \
+    --query "[?name.value=='OpenAI.Standard.$model'] | [0] | (limit - currentValue)" \
+    --output tsv)
 
-**Alternatives Considered**:
-- Use preview API versions (rejected - stability concerns)
-- Separate resource types for hub/project (rejected - not Azure architecture)
+  if (( $(echo "$available < $required_tpm" | bc -l) )); then
+    echo "ERROR: Insufficient quota for $model"
+    echo "  Available: ${available}K TPM, Required: ${required_tpm}K TPM"
+    return 1
+  fi
 
-### 5. Migration Path Validation
+  echo "✓ Quota OK for $model"
+}
 
-**Decision**: Three-phase validation before resource deletion
+check_quota "gpt-4o" 50 "eastus2"
+check_quota "gpt-4o-mini" 100 "eastus2"
+```
 
-**Research Findings**:
-- **Phase 1: Deployment Validation**
-  - Bicep deployment succeeds
-  - All resources created (hub, project, 5 deployments)
-  - No deployment errors in Azure portal
+### Total Quota Requirement
+- **gpt-4.1**: 50K TPM
+- **gpt-4.1-mini**: 100K TPM
+- **gpt-4o**: 50K TPM
+- **FLUX-1.1-pro**: N/A (serverless, pay-per-token)
+- **DeepSeek-V3.1**: N/A (serverless, pay-per-token)
+- **Total standard TPM**: 200K TPM
 
-- **Phase 2: Connectivity Validation**
-  - All 5 model endpoints respond to health checks
-  - Authentication works with workspace keys
-  - TPM capacity matches specifications
+### Alternatives Considered
+- **Portal-only validation**: Rejected - not automatable
+- **Skip quota check**: Rejected - causes obscure deployment failures
+- **ARM what-if**: Rejected - doesn't validate quota
 
-- **Phase 3: Integration Validation**
-  - Quickstart scenarios pass
-  - Test suite passes against new infrastructure
-  - Output file format correct
+## 5. Clean Resource Group Validation
 
-**Rollback Strategy**:
-- Keep old OpenAI resources until Phase 3 complete
-- Document old resource IDs before deletion
-- Azure resource recovery window: 48 hours (soft delete)
+### Decision
+Validate using `az resource list` with count check; implement in deployment script (not Bicep).
 
-**Cut-Over Steps**:
-1. Deploy AI Foundry infrastructure (parallel)
-2. Run validation phases 1-3
-3. Update client applications with new endpoints
-4. Verify client connectivity
-5. Delete old OpenAI resources
-6. Archive old resource documentation
+### Rationale
+- **Bicep limitation**: No conditional deployment based on existing resources (by design)
+- **Azure pattern**: Pre-deployment validation via scripts or pipelines
+- **Idempotency**: Bicep deployments are additive; empty RG check must be external
 
-**Rationale**: Three-phase validation ensures infrastructure readiness before committing to migration. Phased approach allows rollback if issues discovered.
+### Bash Validation Script
+```bash
+#!/bin/bash
+RESOURCE_GROUP="my-rg"
 
-**Alternatives Considered**:
-- Blue-green deployment (rejected - violates simplicity-first)
-- Instant cut-over (rejected - high risk)
-- Gradual traffic shift (rejected - requires proxy layer)
+# Check RG exists
+if ! az group exists --name "$RESOURCE_GROUP" | grep -q true; then
+  echo "ERROR: Resource group $RESOURCE_GROUP does not exist"
+  exit 1
+fi
 
-## Constitutional Compliance
+# Check RG is empty
+resource_count=$(az resource list \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "length(@)" \
+  --output tsv)
 
-All research decisions comply with constitutional principles:
-- **Simplicity-First**: Single Bicep file, minimal scripts, no new frameworks
-- **Test-First**: Validation phases ensure testability
-- **Azure-Native**: Using Azure ML Services and AI Services natively
-- **Clear Contracts**: JSON Schema for inputs/outputs
-- **Observability**: Validation logging, health checks
+if [ "$resource_count" -ne 0 ]; then
+  echo "ERROR: Resource group contains $resource_count resources"
+  echo "  Clean deployment required"
+  az resource list --resource-group "$RESOURCE_GROUP" --output table
+  exit 1
+fi
 
-## Unresolved Questions
+echo "✓ Resource group is empty"
+```
 
-None - All NEEDS CLARIFICATION items from spec.md resolved through research.
+### Integration in deploy.sh
+```bash
+#!/bin/bash
+set -euo pipefail
 
-## References
+RESOURCE_GROUP="${1:-}"
+LOCATION="${2:-eastus2}"
 
-- Azure AI Foundry Documentation: https://learn.microsoft.com/azure/ai-studio/
-- Azure ML Workspace API: https://learn.microsoft.com/azure/templates/microsoft.machinelearningservices/workspaces
-- Azure AI Services API: https://learn.microsoft.com/azure/templates/microsoft.cognitiveservices/accounts
-- Bicep Documentation: https://learn.microsoft.com/azure/azure-resource-manager/bicep/
+# Validate empty RG
+count=$(az resource list -g "$RESOURCE_GROUP" --query "length(@)" -o tsv)
+if [ "$count" -ne 0 ]; then
+  echo "ERROR: Resource group contains $count resources"
+  exit 1
+fi
+
+# Continue with deployment
+az deployment group create \
+  --resource-group "$RESOURCE_GROUP" \
+  --template-file infra/main.bicep \
+  --parameters infra/main.parameters.json
+```
+
+### Why Not in Bicep
+- Bicep has no "fail if resources exist" capability
+- `existing` keyword is for referencing resources, not validation
+- ARM deployment mode `Complete` deletes existing resources (dangerous)
+- Pre-deployment validation is the correct pattern
+
+### Alternatives Considered
+- **Bicep conditions**: Rejected - no query/count functions for existing resources
+- **ARM Complete mode**: Rejected - destructive
+- **Azure Policy**: Rejected - overkill for simple validation
+
+## Summary of Decisions
+
+| Topic | Decision | Implementation |
+|-------|----------|----------------|
+| **Architecture** | Hub-less AIServices + Projects | `Microsoft.CognitiveServices/accounts@2025-06-01` |
+| **Model Deployments** | Standard TPM for 3 models, serverless for 2 | Bicep for standard, manual for serverless |
+| **TPM Allocation** | 200K TPM for 3 standard models | sku.capacity in deployments resource |
+| **Model Validation** | CLI for standard, manual for serverless | `az cognitiveservices model list` in validate.sh |
+| **Quota Validation** | CLI quota check before deployment | `az cognitiveservices usage list` in validate.sh |
+| **Clean RG Validation** | Bash script pre-deployment check | `az resource list` count check in deploy.sh |
+
+## Impact on Spec Requirements
+
+### Spec Compliance
+- **FR-001** ✅: Hub-less AI Foundry project (CognitiveServices account)
+- **FR-002** ⚠️: **Cannot deploy all 5 models via Bicep** (FLUX and DeepSeek are serverless)
+- **FR-003** ⚠️: **TPM allocation only for 3 models** (200K total, not 260K)
+- **FR-005** ✅: Single-file Bicep (<300 lines)
+- **FR-011** ✅: Model availability validation (standard models only)
+- **FR-012** ✅: TPM quota validation
+- **FR-013** ✅: Clean resource group validation
+
+### Required Spec Updates
+**FR-002 and FR-003 need clarification**:
+- Option 1: Deploy only 3 standard OpenAI models via Bicep, document FLUX/DeepSeek as manual
+- Option 2: Remove FLUX/DeepSeek from requirements (simplify to 3 models)
+- Option 3: Add Azure ML CLI extension for serverless deployments (increases complexity)
+
+**Recommendation**: Update spec to Option 1 (3 models in Bicep, 2 serverless as manual steps) to maintain <300 line constraint and simplicity.
+
+## Next Steps (Phase 1)
+
+1. Create data-model.md with 3 standard model deployments
+2. Generate contracts for input (3 models) and output schemas
+3. Update quickstart scenarios to reflect serverless manual deployment
+4. Generate Bicep template for AIServices + 3 standard deployments
+5. Create deployment scripts with all 5 validation checks
 
 ---
-**Status**: Complete | **Next**: Phase 1 (Design & Contracts)
+
+**Status**: Ready for Phase 1 (Design & Contracts)

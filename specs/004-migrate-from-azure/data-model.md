@@ -1,346 +1,394 @@
-# Data Model: Azure AI Foundry Migration
+# Data Model: Azure AI Foundry Hub-less Deployment
 
 **Feature**: 004-migrate-from-azure
-**Date**: 2025-10-19
-**Version**: 1.0.0
+**Date**: 2025-10-20
+**Version**: 2.0.0 (Updated for hub-less architecture)
 
 ## Entity Relationship Diagram
 
 ```
-┌─────────────────────────┐
-│   AI Foundry Hub        │
-│  (ML Workspace)         │
-│                         │
-│ - name: string          │
-│ - location: string      │
-│ - sku: object           │
-│ - identity: object      │
-└────────────┬────────────┘
-             │ 1
-             │ owns
-             │ 0..*
-┌────────────▼────────────┐
-│   AI Foundry Project    │
-│  (ML Workspace)         │
-│                         │
-│ - name: string          │
-│ - hubResourceId: string │
-│ - location: string      │
-└────────────┬────────────┘
-             │ 1
-             │ contains
-             │ 1
-┌────────────▼────────────┐
-│   AI Services           │
-│  (Cognitive Services)   │
-│                         │
-│ - name: string          │
-│ - kind: 'AIServices'    │
-│ - sku: object           │
-└────────────┬────────────┘
-             │ 1
-             │ hosts
-             │ 5
-┌────────────▼────────────┐
-│   Model Deployment      │
-│  (AI Services Deploy)   │
-│                         │
-│ - name: string          │
-│ - model: object         │
-│ - sku: object           │
-└─────────────────────────┘
+┌─────────────────────────────────┐
+│   AI Foundry AIServices         │
+│  (CognitiveServices Account)    │
+│                                 │
+│ - name: string                  │
+│ - kind: 'AIServices'            │
+│ - location: string              │
+│ - sku: { name: 'S0' }           │
+│ - customSubDomainName: string   │
+│ - allowProjectManagement: true  │
+└────────┬──────────────┬─────────┘
+         │ 1            │ 1
+         │ contains     │ hosts
+         │ 1            │ 3
+┌────────▼─────────┐    │
+│   Project        │    │
+│  (Child)         │    │
+│                  │    │
+│ - name: string   │    │
+│ - displayName    │    │
+└──────────────────┘    │
+                        │
+         ┌──────────────┴──────────────┬─────────────────┐
+         │                             │                 │
+┌────────▼─────────┐    ┌──────────────▼────┐   ┌───────▼──────────┐
+│ Model Deployment │    │ Model Deployment  │   │ Model Deployment │
+│   (gpt-4)        │    │   (gpt-4o-mini)   │   │   (gpt-4o)       │
+│                  │    │                   │   │                  │
+│ - name: string   │    │ - name: string    │   │ - name: string   │
+│ - capacity: 50   │    │ - capacity: 100   │   │ - capacity: 50   │
+│ - version        │    │ - version         │   │ - version        │
+└──────────────────┘    └───────────────────┘   └──────────────────┘
+
+Manual Deployments (Portal):
+┌──────────────────────────────────────┐
+│ Serverless Model: FLUX-1.1-pro       │
+│ - Pay-per-token (no TPM)             │
+│ - Deployed via AI Foundry portal     │
+└──────────────────────────────────────┘
+
+┌──────────────────────────────────────┐
+│ Serverless Model: DeepSeek-V3.1      │
+│ - Pay-per-token (no TPM)             │
+│ - Deployed via AI Foundry portal     │
+└──────────────────────────────────────┘
 ```
 
 ## Entities
 
-### 1. AI Foundry Hub
-
-**Type**: Azure ML Services Workspace (kind: 'Hub')
-
-**Purpose**: Top-level container providing centralized resource management, identity, and networking for AI projects.
+### 1. AI Foundry AIServices Account
+**Resource Type**: `Microsoft.CognitiveServices/accounts@2025-06-01`
 
 **Properties**:
-
 | Property | Type | Required | Validation | Description |
 |----------|------|----------|------------|-------------|
-| name | string | Yes | 3-33 chars, alphanumeric + hyphens, globally unique | Hub resource name |
-| location | string | Yes | Valid Azure region | Azure region for deployment |
-| kind | string | Yes | Must be 'Hub' | Resource specialization type |
-| sku.name | string | Yes | 'Basic' | Pricing tier |
+| name | string | Yes | 2-64 chars, alphanumeric/hyphens | Globally unique account name |
+| kind | string | Yes | Must be 'AIServices' | Specifies AI Foundry account type |
+| location | string | Yes | Valid Azure region | Deployment region |
+| sku.name | string | Yes | 'S0' (Standard) | Service tier |
 | identity.type | string | Yes | 'SystemAssigned' | Managed identity type |
-| properties.friendlyName | string | No | Max 255 chars | Display name |
-| properties.description | string | No | Max 1000 chars | Hub description |
+| customSubDomainName | string | Yes | Globally unique | Subdomain for endpoints |
+| allowProjectManagement | boolean | Yes | Must be true | Enables hub-less projects |
+| publicNetworkAccess | string | No | 'Enabled' or 'Disabled' | Network access control |
+| disableLocalAuth | boolean | No | true/false | Disable key-based auth |
+
+**Computed Properties**:
+- `id`: Resource ID (output only)
+- `properties.endpoint`: HTTPS endpoint URL
+- `identity.principalId`: Managed identity ID
 
 **Relationships**:
-- **Parent**: None (top-level resource)
-- **Children**: 1+ AI Foundry Projects
-
-**Lifecycle**:
-- Created before any projects
-- Cannot be deleted while projects exist
-- Soft delete enabled (48-hour recovery window)
+- **Contains**: 1 Project (1:1)
+- **Hosts**: 3 Model Deployments (1:3)
 
 **Validation Rules**:
 - Name must be globally unique across Azure
-- Location must support AI Foundry Hub resources
-- Cannot change kind after creation
+- customSubDomainName must be globally unique
+- Location must support AI Foundry (validate via CLI)
+- allowProjectManagement must be true for hub-less projects
+
+**Example**:
+```json
+{
+  "name": "ai-foundry-xyz123",
+  "kind": "AIServices",
+  "location": "eastus2",
+  "sku": { "name": "S0" },
+  "identity": { "type": "SystemAssigned" },
+  "properties": {
+    "customSubDomainName": "ai-xyz123",
+    "allowProjectManagement": true,
+    "publicNetworkAccess": "Enabled",
+    "disableLocalAuth": false
+  }
+}
+```
 
 ---
 
 ### 2. AI Foundry Project
-
-**Type**: Azure ML Services Workspace (kind: 'Project')
-
-**Purpose**: Scoped workspace within a hub for model deployments, compute resources, and project-specific configuration.
+**Resource Type**: `Microsoft.CognitiveServices/accounts/projects@2025-06-01`
 
 **Properties**:
-
 | Property | Type | Required | Validation | Description |
 |----------|------|----------|------------|-------------|
-| name | string | Yes | 3-33 chars, alphanumeric + hyphens, unique in subscription | Project resource name |
-| location | string | Yes | Must match Hub location | Azure region |
-| kind | string | Yes | Must be 'Project' | Resource specialization type |
-| identity.type | string | Yes | 'SystemAssigned' | Managed identity type |
-| properties.hubResourceId | string | Yes | Valid Hub resource ID | Parent Hub reference |
-| properties.friendlyName | string | No | Max 255 chars | Display name |
-| properties.description | string | No | Max 1000 chars | Project description |
+| name | string | Yes | 3-24 chars, alphanumeric/hyphens | Project name (unique within account) |
+| location | string | Yes | Must match parent location | Deployment region |
+| displayName | string | No | 1-100 chars | Friendly display name |
+| description | string | No | Max 500 chars | Project description |
+
+**Computed Properties**:
+- `id`: Project resource ID
+- `properties.projectId`: Unique project identifier
 
 **Relationships**:
-- **Parent**: 1 AI Foundry Hub (required)
-- **Children**: 1 AI Services resource (for model deployments)
-
-**Lifecycle**:
-- Created after Hub exists
-- Requires valid hubResourceId
-- Deleted before Hub can be deleted
-- Soft delete enabled
+- **Parent**: AI Foundry AIServices Account (1:1)
+- **Logical Container**: For model deployments (models deploy to parent account, not project)
 
 **Validation Rules**:
-- Location must match Hub location
-- Hub must exist before project creation
-- hubResourceId must be valid Azure resource ID
+- Name unique within parent account
+- Location must match parent AIServices account location
+- Cannot be created without parent account
+
+**Example**:
+```json
+{
+  "name": "foundry-project",
+  "location": "eastus2",
+  "properties": {
+    "displayName": "AI Foundry Project",
+    "description": "Hub-less project for 5 model deployments"
+  }
+}
+```
 
 ---
 
-### 3. AI Services Resource
-
-**Type**: Azure Cognitive Services Account (kind: 'AIServices')
-
-**Purpose**: Unified endpoint for deploying and accessing multiple AI models within an AI Foundry project.
+### 3. Model Deployment (Standard - 3 instances)
+**Resource Type**: `Microsoft.CognitiveServices/accounts/deployments@2025-06-01`
 
 **Properties**:
-
 | Property | Type | Required | Validation | Description |
 |----------|------|----------|------------|-------------|
-| name | string | Yes | 2-64 chars, alphanumeric + hyphens, globally unique | AI Services account name |
-| location | string | Yes | Valid Azure region | Azure region |
-| kind | string | Yes | Must be 'AIServices' | Multi-service resource type |
-| sku.name | string | Yes | 'S0' (Standard) | Pricing tier |
-| properties.customSubDomainName | string | Yes | Same as name, unique | Custom subdomain for endpoint |
+| name | string | Yes | Alphanumeric/hyphens | Deployment name |
+| sku.name | string | Yes | 'Standard' or 'DataZoneStandard' | Deployment SKU |
+| sku.capacity | integer | Yes | 1-1000 (thousands of TPM) | TPM allocation |
+| model.format | string | Yes | 'OpenAI' | Model format |
+| model.name | string | Yes | Valid model name | Model identifier |
+| model.version | string | Yes | Valid version string | Model version |
+| versionUpgradeOption | string | No | See options below | Version upgrade policy |
+| raiPolicyName | string | No | 'Microsoft.Default' | Content safety policy |
+
+**Version Upgrade Options**:
+- `OnceCurrentVersionExpired`: Auto-upgrade when current version deprecated
+- `OnceNewDefaultVersionAvailable`: Auto-upgrade to latest
+- `NoAutoUpgrade`: Manual version management
+
+**Computed Properties**:
+- `id`: Deployment resource ID
+- `properties.provisioningState`: Deployment status
+- `properties.raiPolicyName`: Applied RAI policy
 
 **Relationships**:
-- **Parent**: 1 AI Foundry Project (implicit via resource group)
-- **Children**: 5 Model Deployments
+- **Parent**: AI Foundry AIServices Account (3:1)
+- **Logical Association**: Project (deployments appear in project context)
 
-**Lifecycle**:
-- Created within project's resource group
-- Hosts multiple model deployments
-- Cannot be deleted while deployments exist
+**Model-Specific Configuration**:
+
+#### gpt-4 (gpt-4.1)
+```json
+{
+  "name": "gpt-4-deployment",
+  "sku": { "name": "Standard", "capacity": 50 },
+  "properties": {
+    "model": {
+      "format": "OpenAI",
+      "name": "gpt-4",
+      "version": "1106-preview"
+    },
+    "versionUpgradeOption": "OnceCurrentVersionExpired",
+    "raiPolicyName": "Microsoft.Default"
+  }
+}
+```
+**TPM**: 50K
+
+#### gpt-4o-mini (gpt-4.1-mini)
+```json
+{
+  "name": "gpt-4o-mini-deployment",
+  "sku": { "name": "DataZoneStandard", "capacity": 100 },
+  "properties": {
+    "model": {
+      "format": "OpenAI",
+      "name": "gpt-4o-mini",
+      "version": "2025-04-14"
+    },
+    "versionUpgradeOption": "OnceCurrentVersionExpired",
+    "raiPolicyName": "Microsoft.Default"
+  }
+}
+```
+**TPM**: 100K
+
+#### gpt-4o
+```json
+{
+  "name": "gpt-4o-deployment",
+  "sku": { "name": "Standard", "capacity": 50 },
+  "properties": {
+    "model": {
+      "format": "OpenAI",
+      "name": "gpt-4o",
+      "version": "2024-08-06"
+    },
+    "versionUpgradeOption": "OnceCurrentVersionExpired",
+    "raiPolicyName": "Microsoft.Default"
+  }
+}
+```
+**TPM**: 50K
+
+**Total TPM (Bicep-deployed models)**: 200K
 
 **Validation Rules**:
-- Custom subdomain must be globally unique
-- Kind must be 'AIServices' (not 'OpenAI')
-- SKU must support model deployments
-
-**Endpoint Format**:
-- Pattern: `https://{name}.{location}.inference.ml.azure.com/`
-- Example: `https://bg-llm-ai.eastus2.inference.ml.azure.com/`
+- Model must be available in target region
+- TPM capacity must be within quota limits
+- Version must be valid for model
+- Sum of all capacities <= available quota
 
 ---
 
-### 4. Model Deployment
+### 4. Serverless Model Deployments (Manual - 2 instances)
 
-**Type**: Azure Cognitive Services Deployment (child of AI Services)
+#### FLUX-1.1-pro
+**Deployment Method**: Azure AI Foundry Portal (Model Catalog)
+**Pricing**: Pay-per-token (no TPM allocation)
+**TPM**: N/A (serverless)
+**Documentation Required**:
+1. Navigate to AI Foundry portal: https://ai.azure.com
+2. Select project
+3. Go to Model Catalog
+4. Search "FLUX-1.1-pro"
+5. Click "Deploy" → Serverless API
+6. Note endpoint URL and key
 
-**Purpose**: Individual AI model instance with allocated TPM capacity, version, and inference endpoint.
+#### DeepSeek-V3.1
+**Deployment Method**: Azure AI Foundry Portal (Model Catalog)
+**Pricing**: Pay-per-token (no TPM allocation)
+**TPM**: N/A (serverless)
+**Documentation Required**:
+1. Navigate to AI Foundry portal: https://ai.azure.com
+2. Select project
+3. Go to Model Catalog
+4. Search "DeepSeek-V3.1"
+5. Click "Deploy" → Serverless API
+6. Note endpoint URL and key
 
-**Properties**:
-
-| Property | Type | Required | Validation | Description |
-|----------|------|----------|------------|-------------|
-| name | string | Yes | Unique within parent, alphanumeric + hyphens | Deployment name |
-| properties.model.format | string | Yes | Must be 'OpenAI' | API compatibility format |
-| properties.model.name | string | Yes | Valid model name in catalog | Model identifier |
-| properties.model.version | string | Yes | Valid version for model | Model version |
-| sku.name | string | Yes | 'Standard' | Deployment tier |
-| sku.capacity | integer | Yes | 1-1000 (TPM) | Tokens per minute capacity |
-
-**5 Deployment Instances**:
-
-| Deployment | Model Name | Model Version | Capacity (TPM) |
-|------------|------------|---------------|----------------|
-| gpt-41-deployment | gpt-4.1 | 2025-04-14 | 50 |
-| gpt-41-mini-deployment | gpt-4o-mini | 2024-07-18 | 100 |
-| gpt-4o-deployment | gpt-4o | 2024-08-06 | 50 |
-| flux-deployment | FLUX-1.1-pro | latest | 10 |
-| deepseek-deployment | DeepSeek-V3.1 | latest | 50 |
-
-**Relationships**:
-- **Parent**: 1 AI Services Resource (required)
-- **Children**: None
-
-**Lifecycle**:
-- Created after AI Services resource exists
-- Can be created/deleted independently
-- Deployment name unique within AI Services resource
-
-**Validation Rules**:
-- Model must be available in region (pre-deployment check)
-- Capacity must not exceed subscription quota
-- Model version must be valid for model name
-- Total capacity across deployments: 260 TPM
-
-**Endpoint Format**:
-- Inherited from parent AI Services endpoint
-- Accessed via deployment name in API calls
-- Example: `https://{aiservices-name}.{location}.inference.ml.azure.com/openai/deployments/{deployment-name}/...`
+**Note**: Serverless models cannot be deployed via Bicep. Manual deployment preserves <300 line Bicep constraint.
 
 ---
 
-### 5. Deployment Parameters
+### 5. Deployment Parameters (Input)
+**File**: `infra/main.parameters.json`
 
-**Type**: Configuration input (main.parameters.json)
+**Schema**:
+```json
+{
+  "location": "eastus2",
+  "aiServicesName": "ai-foundry-unique",
+  "customSubDomain": "ai-unique",
+  "projectName": "foundry-project",
+  "gpt4DeploymentName": "gpt-4-deployment",
+  "gpt4Capacity": 50,
+  "gpt4Version": "1106-preview",
+  "gpt4oMiniDeploymentName": "gpt-4o-mini-deployment",
+  "gpt4oMiniCapacity": 100,
+  "gpt4oMiniVersion": "2025-04-14",
+  "gpt4oDeploymentName": "gpt-4o-deployment",
+  "gpt4oCapacity": 50,
+  "gpt4oVersion": "2024-08-06"
+}
+```
 
-**Purpose**: Input configuration for Bicep template deployment.
+**Total Parameters**: 13 (down from 17 due to serverless models)
 
-**Properties**:
-
-| Parameter | Type | Required | Default | Validation | Description |
-|-----------|------|----------|---------|------------|-------------|
-| location | string | Yes | - | Valid Azure region | Deployment region |
-| hubName | string | Yes | - | 3-33 chars, globally unique | Hub name |
-| projectName | string | Yes | - | 3-33 chars, subscription unique | Project name |
-| aiServicesName | string | Yes | - | 2-64 chars, globally unique | AI Services account name |
-| gpt41ModelName | string | No | 'gpt-4.1' | Valid model name | GPT-4.1 model identifier |
-| gpt41ModelVersion | string | No | '2025-04-14' | Valid version | GPT-4.1 version |
-| gpt41CapacityTPM | integer | No | 50 | 1-1000 | GPT-4.1 TPM capacity |
-| gpt41MiniModelName | string | No | 'gpt-4o-mini' | Valid model name | GPT-4.1-Mini model identifier |
-| gpt41MiniModelVersion | string | No | '2024-07-18' | Valid version | GPT-4.1-Mini version |
-| gpt41MiniCapacityTPM | integer | No | 100 | 1-1000 | GPT-4.1-Mini TPM capacity |
-| gpt4oModelName | string | No | 'gpt-4o' | Valid model name | GPT-4o model identifier |
-| gpt4oModelVersion | string | No | '2024-08-06' | Valid version | GPT-4o version |
-| gpt4oCapacityTPM | integer | No | 50 | 1-1000 | GPT-4o TPM capacity |
-| fluxModelName | string | No | 'FLUX-1.1-pro' | Valid model name | FLUX model identifier |
-| fluxModelVersion | string | No | 'latest' | Valid version | FLUX version |
-| fluxCapacityTPM | integer | No | 10 | 1-1000 | FLUX TPM capacity |
-| deepseekModelName | string | No | 'DeepSeek-V3.1' | Valid model name | DeepSeek model identifier |
-| deepseekModelVersion | string | No | 'latest' | Valid version | DeepSeek version |
-| deepseekCapacityTPM | integer | No | 50 | 1-1000 | DeepSeek TPM capacity |
-
-**Total Parameters**: 19
-
-**Validation Rules**:
-- Total TPM across all models: 260
-- All names globally/subscription unique
-- Location must support all 5 models
+**Validation**: JSON Schema in `contracts/input-schema.json`
 
 ---
 
 ### 6. Deployment Outputs
+**File**: Generated via `scripts/outputs.sh` → `.env.azure-foundry`
 
-**Type**: Deployment result (exported configuration)
-
-**Purpose**: Connection details for client application configuration.
-
-**Properties**:
-
-| Output | Type | Description | Format |
-|--------|------|-------------|--------|
-| hubResourceId | string | Hub ARM resource ID | /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{hub} |
-| projectResourceId | string | Project ARM resource ID | /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{project} |
-| aiServicesEndpoint | string | AI Services inference endpoint | https://{name}.{region}.inference.ml.azure.com/ |
-| aiServicesKey | string | Workspace-level access key | Sensitive, retrieved via listKeys() |
-| gpt41Deployment | object | GPT-4.1 deployment details | { name, model, version, capacity } |
-| gpt41MiniDeployment | object | GPT-4.1-Mini deployment details | { name, model, version, capacity } |
-| gpt4oDeployment | object | GPT-4o deployment details | { name, model, version, capacity } |
-| fluxDeployment | object | FLUX deployment details | { name, model, version, capacity } |
-| deepseekDeployment | object | DeepSeek deployment details | { name, model, version, capacity } |
-
-**.env.azure-openai Mapping**:
+**Schema**:
 ```bash
-AZURE_OPENAI_ENDPOINT=${aiServicesEndpoint}
-AZURE_OPENAI_KEY=${aiServicesKey}
-AZURE_OPENAI_DEPLOYMENT_GPT41=${gpt41Deployment.name}
-AZURE_OPENAI_DEPLOYMENT_GPT41_MINI=${gpt41MiniDeployment.name}
-AZURE_OPENAI_DEPLOYMENT_GPT4O=${gpt4oDeployment.name}
-AZURE_OPENAI_DEPLOYMENT_FLUX=${fluxDeployment.name}
-AZURE_OPENAI_DEPLOYMENT_DEEPSEEK=${deepseekDeployment.name}
+AI_SERVICES_ID="<resource-id>"
+AI_SERVICES_ENDPOINT="https://<subdomain>.cognitiveservices.azure.com/"
+PROJECT_ID="<project-resource-id>"
+
+# Standard models (Bicep-deployed)
+GPT4_ENDPOINT="https://<subdomain>.openai.azure.com/"
+GPT4_DEPLOYMENT_NAME="gpt-4-deployment"
+GPT4_MODEL="gpt-4"
+GPT4_VERSION="1106-preview"
+
+GPT4O_MINI_ENDPOINT="https://<subdomain>.openai.azure.com/"
+GPT4O_MINI_DEPLOYMENT_NAME="gpt-4o-mini-deployment"
+GPT4O_MINI_MODEL="gpt-4o-mini"
+GPT4O_MINI_VERSION="2025-04-14"
+
+GPT4O_ENDPOINT="https://<subdomain>.openai.azure.com/"
+GPT4O_DEPLOYMENT_NAME="gpt-4o-deployment"
+GPT4O_MODEL="gpt-4o"
+GPT4O_VERSION="2024-08-06"
+
+# Serverless models (Manual - placeholder)
+FLUX_ENDPOINT="<manual-deployment>"
+FLUX_KEY="<manual-deployment>"
+DEEPSEEK_ENDPOINT="<manual-deployment>"
+DEEPSEEK_KEY="<manual-deployment>"
 ```
 
-**Validation Rules**:
-- All fields must be present
-- Endpoint must be valid URL
-- Key must be non-empty
-- All deployment objects complete
+**Validation**: JSON Schema in `contracts/output-schema.json`
 
 ---
 
 ## State Transitions
 
-### Deployment Lifecycle
-
+### AIServices Account
 ```
-[Parameters Validated] → [Hub Created] → [Project Created] → [AI Services Created] → [Deployments Created] → [Outputs Generated] → [Validated]
-         ↓                     ↓                ↓                    ↓                       ↓                       ↓
-    [Failed]            [Failed]         [Failed]            [Failed]               [Failed]              [Validated] → [Client Updated]
+[Not Exists] --create--> [Creating] --provision--> [Succeeded]
+[Succeeded] --update--> [Updating] --apply--> [Succeeded]
+[Succeeded] --delete--> [Deleting] --remove--> [Deleted]
 ```
 
-### Resource States
+### Project
+```
+[Not Exists] --create--> [Creating] --provision--> [Succeeded]
+(Requires parent AIServices in Succeeded state)
+```
 
-| State | Description | Next States | Rollback |
-|-------|-------------|-------------|----------|
-| Not Exists | No resources deployed | Creating | N/A |
-| Creating | Deployment in progress | Created, Failed | Delete in-progress resources |
-| Created | Resources exist | Validated, Deleted | Delete all resources |
-| Validated | Health checks pass | In Use | Delete all resources |
-| In Use | Client applications connected | Validated, Deleted | Requires client update |
-| Deleted | Resources removed | Not Exists | Restore from soft delete (48h) |
+### Model Deployment
+```
+[Not Exists] --create--> [Creating] --provision--> [Succeeded]
+[Succeeded] --scale--> [Updating] --apply--> [Succeeded]
+(Requires parent AIServices in Succeeded state)
+```
+
+## Constraints & Dependencies
+
+### Creation Order (Bicep dependency chain)
+1. AI Foundry AIServices Account
+2. Project (depends on AIServices)
+3. Model Deployments (depends on AIServices, parallel creation possible)
+
+### Deletion Order (Reverse)
+1. Model Deployments
+2. Project
+3. AI Foundry AIServices Account
+
+### Validation Sequence
+1. Resource group is empty
+2. Region supports all 3 models
+3. Quota available for 200K TPM
+4. Unique names available (AIServices name, subdomain)
+5. Bicep deployment
+6. Manual serverless deployment (FLUX, DeepSeek)
 
 ---
 
-## Validation Rules Summary
+## Compliance Matrix
 
-### Cross-Entity Constraints
-
-1. **Location Consistency**: Hub, Project, and AI Services must share same location
-2. **Total TPM Quota**: Sum of all deployment capacities = 260 TPM
-3. **Name Uniqueness**:
-   - Hub name: Globally unique
-   - AI Services name: Globally unique
-   - Project name: Unique within subscription
-   - Deployment names: Unique within AI Services account
-4. **Model Availability**: All 5 models must be available in target region
-5. **Reference Integrity**: Project.hubResourceId must reference existing Hub
-
-### Bicep Validation
-
-```bicep
-// Cross-entity validation example
-assert totalCapacity = (gpt41CapacityTPM + gpt41MiniCapacityTPM + gpt4oCapacityTPM + fluxCapacityTPM + deepseekCapacityTPM) == 260
-
-// Location consistency
-assert project.location == hub.location
-assert aiServices.location == hub.location
-```
+| Constitutional Principle | Data Model Compliance |
+|-------------------------|----------------------|
+| **Simplicity-First** | ✅ Hub-less (3 resources vs 4), serverless models manual |
+| **Test-First Development** | ✅ Contract schemas define tests before implementation |
+| **Azure-Native Integration** | ✅ All Cognitive Services native resources |
+| **Clear Contracts** | ✅ JSON Schema validation for inputs/outputs |
+| **Observability** | ✅ Deployment states tracked, outputs structured |
 
 ---
 
-## Schema Version
-
-**Version**: 1.0.0
-**Date**: 2025-10-19
-**Status**: Complete
-
----
-
-**Next**: Contract definitions (input-schema.json, output-schema.json)
+**Version History**:
+- v1.0.0 (2025-10-19): Initial hub-based design
+- v2.0.0 (2025-10-20): Updated to hub-less architecture, 3+2 model approach
