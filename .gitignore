@@ -110,6 +110,12 @@ deploy-*.log
 !infra/contracts/*.json
 *.tmp
 *.temp
+*.parameters.local.json       # Local parameter overrides
+*.bicep.local                 # Local Bicep files
+.env.azure-*                  # All Azure env files (explicit)
+azureauth.json                # Azure CLI auth cache
+*.publishprofile              # Azure publish profiles
+credentials.json              # Generic credentials
 
 # Docker
 docker-compose.override.yml
