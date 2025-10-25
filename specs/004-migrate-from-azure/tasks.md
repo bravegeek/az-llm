@@ -50,46 +50,46 @@ This task list implements migration from Azure OpenAI to Azure AI Foundry **hub-
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
 
 ### Bicep Infrastructure (Single file, sequential)
-- [ ] T015 Create AI Foundry AIServices account resource in infra/main.bicep (Microsoft.CognitiveServices/accounts@2025-06-01, kind: AIServices, allowProjectManagement: true)
-- [ ] T016 Add AI Foundry Project child resource in infra/main.bicep (Microsoft.CognitiveServices/accounts/projects@2025-06-01)
-- [ ] T017 Add GPT-4 deployment resource in infra/main.bicep (50K TPM, version 1106-preview)
-- [ ] T018 Add GPT-4o-mini deployment resource in infra/main.bicep (100K TPM, version 2025-04-14, DataZoneStandard SKU)
-- [ ] T019 Add GPT-4o deployment resource in infra/main.bicep (50K TPM, version 2024-08-06)
-- [ ] T020 Add output definitions in infra/main.bicep (aiServicesResourceId, projectResourceId, endpoints, deployment details for 3 models + serverless placeholders)
+- [X] T015 Create AI Foundry AIServices account resource in infra/main.bicep (Microsoft.CognitiveServices/accounts@2025-06-01, kind: AIServices, allowProjectManagement: true)
+- [X] T016 Add AI Foundry Project child resource in infra/main.bicep (Microsoft.CognitiveServices/accounts/projects@2025-06-01)
+- [X] T017 Add GPT-4 deployment resource in infra/main.bicep (50K TPM, version 1106-preview)
+- [X] T018 Add GPT-4o-mini deployment resource in infra/main.bicep (100K TPM, version 2025-04-14, DataZoneStandard SKU)
+- [X] T019 Add GPT-4o deployment resource in infra/main.bicep (50K TPM, version 2024-08-06)
+- [X] T020 Add output definitions in infra/main.bicep (aiServicesResourceId, projectResourceId, endpoints, deployment details for 3 models + serverless placeholders)
 
 ### Parameters File
-- [ ] T021 Create infra/main.parameters.json with 13 parameters (location, aiServicesName, customSubDomain, projectName, 3× model configs)
+- [X] T021 Create infra/main.parameters.json with 13 parameters (location, aiServicesName, customSubDomain, projectName, 3× model configs)
 
 ### Deployment Scripts (Different scripts = parallel)
-- [ ] T022 [P] Validation script: scripts/validate.sh (region check, 3 model availability check, quota validation for 200K TPM, clean RG check)
-- [ ] T023 [P] Deployment script: scripts/deploy.sh (validate → deploy → verify provisioningState)
-- [ ] T024 [P] Outputs extraction script: scripts/outputs.sh (extract deployment outputs → .env.azure-foundry format with serverless placeholders)
+- [X] T022 [P] Validation script: scripts/validate.sh (region check, 3 model availability check, quota validation for 200K TPM, clean RG check)
+- [X] T023 [P] Deployment script: scripts/deploy.sh (validate → deploy → verify provisioningState)
+- [X] T024 [P] Outputs extraction script: scripts/outputs.sh (extract deployment outputs → .env.azure-foundry format with serverless placeholders)
 
 ## Phase 3.4: Integration (Implement test scenarios sequentially)
 
 ### Quickstart Scenario Implementation
-- [ ] T025 Implement quickstart scenario 1: tests/bicep/quickstart-scenario-1.test.sh (full deployment validation - AIServices + Project + 3 models)
-- [ ] T026 Implement quickstart scenario 2: tests/bicep/quickstart-scenario-2.test.sh (validate 3 models deployed, verify TPM=200K total)
-- [ ] T027 Implement quickstart scenario 3: tests/bicep/quickstart-scenario-3.test.sh (validate .env.azure-foundry schema compliance)
-- [ ] T028 Implement quickstart scenario 4: tests/bicep/quickstart-scenario-4.test.sh (curl test 3 standard model endpoints)
-- [ ] T029 Implement quickstart scenario 5: tests/bicep/quickstart-scenario-5.test.sh (az cognitiveservices model list validation for 3 models)
-- [ ] T030 Implement quickstart scenario 6: tests/bicep/quickstart-scenario-6.test.sh (negative test: non-empty RG fails validation)
+- [X] T025 Implement quickstart scenario 1: tests/bicep/quickstart-scenario-1.test.sh (full deployment validation - AIServices + Project + 3 models)
+- [X] T026 Implement quickstart scenario 2: tests/bicep/quickstart-scenario-2.test.sh (validate 3 models deployed, verify TPM=200K total)
+- [X] T027 Implement quickstart scenario 3: tests/bicep/quickstart-scenario-3.test.sh (validate .env.azure-foundry schema compliance)
+- [X] T028 Implement quickstart scenario 4: tests/bicep/quickstart-scenario-4.test.sh (curl test 3 standard model endpoints)
+- [X] T029 Implement quickstart scenario 5: tests/bicep/quickstart-scenario-5.test.sh (az cognitiveservices model list validation for 3 models)
+- [X] T030 Implement quickstart scenario 6: tests/bicep/quickstart-scenario-6.test.sh (negative test: non-empty RG fails validation)
 
 ### Test Runner
-- [ ] T031 Create tests/bicep/run-all-tests.sh orchestrator (runs T004-T014, T025-T030 in sequence with reporting)
+- [X] T031 Create tests/bicep/run-all-tests.sh orchestrator (runs T004-T014, T025-T030 in sequence with reporting)
 
 ## Phase 3.5: Polish
 
 ### Documentation (Different files = parallel)
-- [ ] T032 [P] Create infra/README.md deployment guide (prerequisites, usage, troubleshooting, **serverless model manual deployment instructions for FLUX and DeepSeek**)
-- [ ] T033 [P] Create MIGRATION.md guide (Azure OpenAI → AI Foundry hub-less migration steps, breaking changes, serverless model manual deployment)
-- [ ] T034 [P] Update root README.md with AI Foundry hub-less architecture section and deployment links
+- [X] T032 [P] Create infra/README.md deployment guide (prerequisites, usage, troubleshooting, **serverless model manual deployment instructions for FLUX and DeepSeek**)
+- [X] T033 [P] Create MIGRATION.md guide (Azure OpenAI → AI Foundry hub-less migration steps, breaking changes, serverless model manual deployment)
+- [X] T034 [P] Update root README.md with AI Foundry hub-less architecture section and deployment links
 
 ### Validation & Cleanup
-- [ ] T035 Verify all tests pass: bash tests/bicep/run-all-tests.sh
-- [ ] T036 Verify Bicep file <300 lines: wc -l infra/main.bicep
-- [ ] T037 Run constitutional compliance check against .specify/memory/constitution.md (verify Simplicity-First, TDD, Azure-native, Clear Contracts, Observability)
-- [ ] T038 [P] Update CLAUDE.md agent context: .specify/scripts/bash/update-agent-context.sh claude
+- [X] T035 Verify all tests pass: bash tests/bicep/run-all-tests.sh
+- [X] T036 Verify Bicep file <300 lines: wc -l infra/main.bicep
+- [X] T037 Run constitutional compliance check against .specify/memory/constitution.md (verify Simplicity-First, TDD, Azure-native, Clear Contracts, Observability)
+- [X] T038 [P] Update CLAUDE.md agent context: .specify/scripts/bash/update-agent-context.sh claude
 
 ## Dependencies
 

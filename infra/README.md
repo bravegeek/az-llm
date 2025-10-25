@@ -1,33 +1,39 @@
-# Minimal Azure OpenAI Infrastructure
+# Azure AI Foundry Hub-less Infrastructure
 
-Single-file Bicep deployment for Azure OpenAI Service with 5 model deployments.
+Single-file Bicep deployment for Azure AI Foundry with hub-less architecture and 3 standard model deployments.
 
 ## Overview
 
-This minimal infrastructure replaces the previous 15-file Bicep setup with a single `main.bicep` file that deploys:
+This infrastructure deploys Azure AI Foundry using the **hub-less architecture** (2025 recommended pattern), which is simpler than the traditional Hub + Project model. The deployment includes:
 
-- **1 Azure OpenAI Account** (S0 tier)
-- **5 Model Deployments** (total 260 TPM):
-  1. `gpt-4.1` - Primary GPT model (50 TPM)
-  2. `gpt-4.1-mini` - Cost-effective GPT (100 TPM)
-  3. `gpt-4o` - High-performance multimodal (50 TPM)
-  4. `FLUX-1.1-pro` - Image generation (10 TPM)
-  5. `DeepSeek-V3.1` - Alternative LLM (50 TPM)
+- **1 AIServices Account** (kind: AIServices, S0 tier) - Enables project management without separate hub
+- **1 AI Foundry Project** (child resource) - Workspace for model deployments
+- **3 Standard Model Deployments** (200K TPM total, Bicep-deployed):
+  1. `gpt-4` - GPT-4 model (50K TPM, version 1106-preview)
+  2. `gpt-4o-mini` - Cost-effective mini model (100K TPM, version 2025-04-14)
+  3. `gpt-4o` - High-performance GPT-4o (50K TPM, version 2024-08-06)
 
-**Constitutional Compliance**: ✅ Single file (214 lines < 300), TDD validated, Azure-native
+- **2 Serverless Models** (Manual deployment via portal):
+  4. `FLUX-1.1-pro` - Image generation (serverless, pay-per-token)
+  5. `DeepSeek-V3.1` - Alternative LLM (serverless, pay-per-token)
+
+**Constitutional Compliance**: ✅ Single file (214 lines < 300), TDD validated, Azure-native, hub-less (simplest architecture)
 
 ## Prerequisites
 
 - **Azure CLI** 2.50+ ([Install](https://docs.microsoft.com/cli/azure/install-azure-cli))
 - **Bicep CLI** 0.18+ (run `az bicep install`)
-- **Azure Subscription** with OpenAI service enabled
-- **Resource Group** (existing or create new)
+- **Azure Subscription** with AI Foundry access
+- **Clean Resource Group** (deployment requires empty RG)
+- **jq** - JSON processor for scripts ([Install](https://stedolan.github.io/jq/))
+- **ajv-cli** (optional) - JSON Schema validation (`npm install -g ajv-cli`)
 
 **Verify prerequisites**:
 ```bash
 az --version | grep "azure-cli"
 az bicep version
 az account show --query "name" -o tsv
+jq --version
 ```
 
 ## Quick Start
@@ -35,338 +41,287 @@ az account show --query "name" -o tsv
 ### 1. Configure Parameters
 
 ```bash
-# Copy parameters template
-cp infra/main.parameters.json infra/main.parameters.local.json
+# Edit infra/main.parameters.json:
+# - Set "aiServicesName" to globally unique name (e.g., "yourname-ai-foundry")
+# - Set "customSubDomain" to globally unique subdomain (e.g., "yourname-ai")
+# - Set "location" to your preferred region (e.g., "eastus2", "westus")
+# - Optionally adjust TPM quotas (default: 50K, 100K, 50K)
+```
 
-# Edit main.parameters.local.json:
-# - Set "openAIAccountName" to globally unique name (e.g., "yourname-llm-dev")
-# - Set "location" to your preferred region (e.g., "eastus2", "westus3")
-# - Adjust TPM quotas if needed (default total: 260 TPM)
+**Example parameters**:
+```json
+{
+  "location": { "value": "eastus2" },
+  "aiServicesName": { "value": "my-ai-foundry" },
+  "customSubDomain": { "value": "my-ai" },
+  "projectName": { "value": "foundry-project" }
+}
 ```
 
 ### 2. Validate Configuration
 
 ```bash
-./scripts/validate.sh
+# Validate Bicep syntax, parameters, region, quota, and RG state
+./scripts/validate.sh eastus2 rg-ai-foundry
 ```
 
-Expected output:
-```
-✅ Syntax valid
-✅ Build valid
-✅ Parameters valid
-```
+**Validation checks**:
+- ✅ Bicep syntax and ARM template build
+- ✅ Parameter file structure and schema compliance
+- ✅ Model availability in target region (gpt-4, gpt-4o-mini, gpt-4o)
+- ✅ TPM quota availability (200K total)
+- ✅ Resource group is empty (or doesn't exist)
 
 ### 3. Deploy Infrastructure
 
 ```bash
-# Login to Azure
-az login
-
-# Create resource group (if needed)
-az group create --name my-openai-rg --location eastus2
-
-# Deploy
-./scripts/deploy.sh my-openai-rg @infra/main.parameters.local.json
+# Create deployment (5-10 minutes)
+./scripts/deploy.sh rg-ai-foundry infra/main.parameters.json
 ```
 
-Deployment time: ~5-7 minutes
+**What gets deployed**:
+1. AIServices account with SystemAssigned managed identity
+2. AI Foundry Project (hub-less)
+3. 3 model deployments (gpt-4, gpt-4o-mini, gpt-4o)
+
+**Expected output**:
+```
+✅ Deployment complete!
+
+📊 Deployment Outputs:
+AI Services Resource ID: /subscriptions/.../Microsoft.CognitiveServices/accounts/my-ai-foundry
+Project Resource ID: /subscriptions/.../accounts/my-ai-foundry/projects/foundry-project
+Endpoint: https://my-ai.openai.azure.com/
+
+Model Deployments:
+  - gpt-4-deployment (gpt-4, 50K TPM)
+  - gpt-4o-mini-deployment (gpt-4o-mini, 100K TPM)
+  - gpt-4o-deployment (gpt-4o, 50K TPM)
+```
 
 ### 4. Extract Outputs
 
 ```bash
-./scripts/outputs.sh my-openai-rg
+# Generate .env.azure-foundry file
+./scripts/outputs.sh rg-ai-foundry
 ```
 
-This creates `.env.azure-openai` with 7 environment variables:
-- `AZURE_OPENAI_ENDPOINT` - API endpoint URL
-- `AZURE_API_KEY` - Primary access key
-- `GPT41_DEPLOYMENT_NAME` - gpt-4.1 deployment name
-- `GPT41_MINI_DEPLOYMENT_NAME` - gpt-4.1-mini deployment name
-- `GPT4O_DEPLOYMENT_NAME` - gpt-4o deployment name
-- `FLUX_DEPLOYMENT_NAME` - FLUX-1.1-pro deployment name
-- `DEEPSEEK_DEPLOYMENT_NAME` - DeepSeek-V3.1 deployment name
-
-## Configuration
-
-### Parameter File Structure
-
-```json
-{
-  "parameters": {
-    "location": { "value": "eastus2" },
-    "openAIAccountName": { "value": "my-unique-name" },
-    "aiFoundryProjectName": { "value": "optional-project-tag" },
-    "gpt41ModelName": { "value": "gpt-4.1" },
-    "gpt41ModelVersion": { "value": "0409" },
-    "gpt41CapacityTPM": { "value": 50 },
-    // ... 15 more model parameters (3 per model × 5 models)
-  }
-}
-```
-
-### Supported Regions
-
-Check region availability:
+**Generated `.env.azure-foundry` file**:
 ```bash
-az account list-locations \
-  --query "[?metadata.regionCategory=='Recommended'].name" \
-  -o tsv
+AI_SERVICES_ID=/subscriptions/.../accounts/my-ai-foundry
+AI_SERVICES_ENDPOINT=https://my-ai.openai.azure.com/
+GPT4_DEPLOYMENT_NAME=gpt-4-deployment
+GPT4O_MINI_DEPLOYMENT_NAME=gpt-4o-mini-deployment
+GPT4O_DEPLOYMENT_NAME=gpt-4o-deployment
+FLUX_DEPLOYMENT_STATUS=manual-required
+DEEPSEEK_DEPLOYMENT_STATUS=manual-required
 ```
 
-**Recommended**: `eastus2`, `westus3`, `swedencentral`
+### 5. Deploy Serverless Models (Manual)
 
-### TPM Quota Management
+**FLUX-1.1-pro and DeepSeek-V3.1 are serverless models that cannot be deployed via Bicep.** Deploy them manually:
 
-**Default allocation** (260 TPM total):
-- GPT-4.1: 50 TPM
-- GPT-4.1-Mini: 100 TPM (higher for high-volume queries)
-- GPT-4o: 50 TPM
-- FLUX-1.1-pro: 10 TPM (image generation is slower)
-- DeepSeek-V3.1: 50 TPM
+1. Navigate to [Azure AI Foundry portal](https://ai.azure.com)
+2. Select your project (`foundry-project`)
+3. Go to **Model Catalog**
+4. Search for `FLUX-1.1-pro`:
+   - Click **Deploy** → **Serverless API**
+   - Note the endpoint URL and API key
+5. Search for `DeepSeek-V3.1`:
+   - Click **Deploy** → **Serverless API**
+   - Note the endpoint URL and API key
+6. Update `.env.azure-foundry` with the serverless endpoints and keys
 
-**Check current quota**:
-```bash
-az cognitiveservices account list-skus \
-  --resource-group <your-rg> \
-  --name <your-account> \
-  --query "value[].capacity"
-```
+**Why manual?** Serverless models use pay-per-token billing (no TPM allocation) and deploy via a different API than standard models. Deploying via Bicep would exceed the 300-line simplicity constraint.
 
-**To adjust**: Edit `*CapacityTPM` values in parameters file
-
-## Docker Integration
-
-### Update LiteLLM Configuration
+### 6. Run Tests
 
 ```bash
-# Source environment variables
-source .env.azure-openai
-
-# Update docker/litellm/config.yaml to reference:
-#  - api_base: $AZURE_OPENAI_ENDPOINT (same for all 5 models)
-#  - api_key: os.environ/AZURE_API_KEY
-#  - model names: $GPT41_DEPLOYMENT_NAME, etc.
-
-# Restart containers
-docker compose restart litellm
+# Run all validation tests
+export RESOURCE_GROUP=rg-ai-foundry
+export AI_SERVICES_NAME=my-ai-foundry
+bash tests/bicep/run-all-tests.sh
 ```
 
-See [quickstart.md](../specs/003-create-a-minimal/quickstart.md) for full integration scenarios.
-
-## Troubleshooting
-
-### Issue: "AccountNameAlreadyExists"
-**Cause**: OpenAI account name not globally unique
-**Fix**: Change `openAIAccountName` in parameters to a unique value
-
-### Issue: "QuotaExceeded"
-**Cause**: Subscription TPM quota limit reached (260 TPM exceeds limit)
-**Fix**:
-1. Reduce TPM capacities in parameters file, OR
-2. Request quota increase: Azure Portal → Quotas → Cognitive Services
-
-### Issue: "InvalidTemplate" during deployment
-**Cause**: Bicep syntax error or API version incompatibility
-**Fix**:
-```bash
-./scripts/validate.sh  # Should catch syntax errors
-az bicep upgrade        # Upgrade Bicep CLI
-```
-
-### Issue: "Unauthorized" when deploying
-**Cause**: Not logged into Azure CLI or insufficient permissions
-**Fix**:
-```bash
-az login
-az account set --subscription "<your-subscription-id>"
-az role assignment list --assignee $(az account show --query user.name -o tsv)
-# Verify you have "Contributor" role on resource group
-```
-
-### Issue: Docker can't connect to Azure
-**Cause**: API key not set in environment
-**Fix**:
-```bash
-source .env.azure-openai
-docker compose restart litellm
-```
-
-### Issue: Model deployment failed
-**Cause**: Model/version not available in region
-**Fix**: Check regional availability:
-```bash
-az cognitiveservices account list-models \
-  --resource-group <your-rg> \
-  --name <your-account> \
-  --query "[].{Name:name, Version:version}"
-```
-
-## Advanced Usage
-
-### Idempotent Redeployment (Update Capacity)
-
-```bash
-# Edit TPM capacities in main.parameters.local.json
-# Redeploy (updates in-place, no resource recreation)
-./scripts/deploy.sh my-openai-rg @infra/main.parameters.local.json
-```
-
-Same endpoint and API key maintained.
-
-### Dry-Run (What-If)
-
-```bash
-az deployment group what-if \
-  --resource-group my-openai-rg \
-  --template-file infra/main.bicep \
-  --parameters @infra/main.parameters.local.json
-```
-
-### Delete Infrastructure
-
-```bash
-# Delete resource group (removes all resources)
-az group delete --name my-openai-rg --yes
-
-# OR delete only OpenAI account (keep resource group)
-az cognitiveservices account delete \
-  --resource-group my-openai-rg \
-  --name <account-name>
-```
-
-## Validation & Testing
-
-**Syntax validation**:
-```bash
-./tests/bicep/linter.test.sh
-```
-
-**Build validation**:
-```bash
-./tests/bicep/build.test.sh
-```
-
-**Parameter validation**:
-```bash
-./tests/bicep/parameter-validation.test.sh
-```
-
-**Full validation suite**:
-```bash
-./scripts/validate.sh
-```
-
-**Integration tests**: See [quickstart.md](../specs/003-create-a-minimal/quickstart.md) for 6 end-to-end scenarios
-
-## Migration from Old Infrastructure
-
-See [specs/003-create-a-minimal/quickstart.md Scenario 3](../specs/003-create-a-minimal/quickstart.md#scenario-3-migration-from-old-infrastructure) for complete migration guide.
-
-**Quick summary**:
-1. Old infrastructure archived to `infra-archive/2025-10-12-original/`
-2. Deploy new minimal Bicep to NEW resource group
-3. Test Docker connectivity with new endpoint
-4. Update production config
-5. Manually delete old Azure resources
+**Test suite includes**:
+- ✅ Bicep linter and build validation
+- ✅ Parameter and contract schema validation
+- ✅ Infrastructure deployment validation (AIServices + Project + 3 models)
+- ✅ Model TPM allocation verification (200K total)
+- ✅ Output format compliance
 
 ## Architecture
 
+### Hub-less vs Hub-based
+
+**Hub-less (This deployment - Simpler)**:
 ```
-┌─────────────────────────────────────┐
-│  Azure Resource Group               │
-│  ┌────────────────────────────────┐ │
-│  │ OpenAI Account (S0)            │ │
-│  │  - endpoint: https://...       │ │
-│  │  - apiKey: (via listKeys())    │ │
-│  │                                │ │
-│  │  ┌──────────────────────────┐  │ │
-│  │  │ Model Deployments (5)    │  │ │
-│  │  │  1. gpt-4.1       50 TPM │  │ │
-│  │  │  2. gpt-4.1-mini 100 TPM │  │ │
-│  │  │  3. gpt-4o        50 TPM │  │ │
-│  │  │  4. FLUX-1.1-pro  10 TPM │  │ │
-│  │  │  5. DeepSeek-V3.1 50 TPM │  │ │
-│  │  │  Total: 260 TPM          │  │ │
-│  │  └──────────────────────────┘  │ │
-│  └────────────────────────────────┘ │
-└─────────────────────────────────────┘
-            │
-            │ outputs → .env.azure-openai
-            ▼
-┌─────────────────────────────────────┐
-│  Docker Compose Stack               │
-│  ┌────────────────┐  ┌────────────┐ │
-│  │ LiteLLM Proxy  │  │ Open WebUI │ │
-│  │ (5 models)     │──│            │ │
-│  └────────────────┘  └────────────┘ │
-└─────────────────────────────────────┘
+AIServices Account (kind: AIServices, allowProjectManagement: true)
+  ├── Project (child resource)
+  └── Model Deployments (3× standard models)
+```
+
+**Hub-based (Legacy - More complex)**:
+```
+Hub (ML Workspace)
+  ├── Project (ML Workspace)
+  └── AIServices Account
+      └── Model Deployments
+```
+
+**Why hub-less?**
+- ✅ Simpler: 2 resources instead of 3
+- ✅ Fewer permissions required
+- ✅ Easier to manage and deploy
+- ✅ Recommended for most scenarios (2025 best practice)
+
+### Resource Hierarchy
+
+```
+CognitiveServices/accounts (AIServices)
+├── Identity: SystemAssigned
+├── Properties:
+│   ├── customSubDomainName: <unique-subdomain>
+│   ├── allowProjectManagement: true
+│   └── publicNetworkAccess: Enabled
+└── Child Resources:
+    ├── projects/<project-name>
+    └── deployments/
+        ├── gpt-4-deployment
+        ├── gpt-4o-mini-deployment
+        └── gpt-4o-deployment
 ```
 
 ## File Structure
 
 ```
 infra/
-├── main.bicep              # Single-file Bicep (214 lines)
-├── main.parameters.json    # Default parameters (all 5 models)
+├── main.bicep              # Single-file infrastructure (214 lines)
+├── main.parameters.json    # Deployment parameters (13 params)
 └── README.md               # This file
 
 scripts/
-├── deploy.sh               # Deployment automation (42 lines)
-├── validate.sh             # Pre-deployment validation (22 lines)
-└── outputs.sh              # Output extraction (52 lines)
+├── validate.sh             # Pre-deployment validation
+├── deploy.sh               # Deployment automation
+└── outputs.sh              # Extract outputs to .env
 
 tests/bicep/
-├── linter.test.sh          # Syntax validation
-├── build.test.sh           # Compilation test
-├── parameter-validation.test.sh # Schema validation
-└── deployment.test.sh      # Integration test
-
-infra-archive/
-└── 2025-10-12-original/    # Old 15-file infrastructure
+├── linter.test.sh                    # Bicep syntax validation
+├── build.test.sh                     # ARM template build test
+├── parameter-validation.test.sh      # Parameter schema test
+├── contract-input.test.sh            # Input contract validation
+├── contract-output.test.sh           # Output contract validation
+├── quickstart-scenario-1.test.sh     # Infrastructure validation
+├── quickstart-scenario-2.test.sh     # Model TPM validation
+├── quickstart-scenario-3.test.sh     # Output format validation
+├── quickstart-scenario-4.test.sh     # Endpoint connectivity
+├── quickstart-scenario-5.test.sh     # Model availability validation
+├── quickstart-scenario-6.test.sh     # Clean RG validation
+└── run-all-tests.sh                  # Test orchestrator
 ```
 
-## Links
+## Troubleshooting
 
-- **Feature Spec**: [specs/003-create-a-minimal/spec.md](../specs/003-create-a-minimal/spec.md)
-- **Quickstart Guide**: [specs/003-create-a-minimal/quickstart.md](../specs/003-create-a-minimal/quickstart.md)
-- **Data Model**: [specs/003-create-a-minimal/data-model.md](../specs/003-create-a-minimal/data-model.md)
-- **Contract Schemas**: [specs/003-create-a-minimal/contracts/](../specs/003-create-a-minimal/contracts/)
-- **Azure OpenAI Docs**: https://learn.microsoft.com/azure/ai-services/openai/
-- **Bicep Docs**: https://learn.microsoft.com/azure/azure-resource-manager/bicep/
+### Deployment Fails: "Location X does not support model Y"
+
+**Solution**: Change region or remove unavailable model.
+
+```bash
+# Check which regions support all 3 models
+az cognitiveservices model list --location eastus2 --query "[?name=='gpt-4' || name=='gpt-4o-mini' || name=='gpt-4o'].name" -o tsv
+```
+
+**Recommended regions**: `eastus`, `eastus2`, `westus`, `northcentralus`
+
+### Deployment Fails: "Insufficient Quota"
+
+**Solution**: Request quota increase or reduce TPM allocations.
+
+```bash
+# Check current quota usage
+az cognitiveservices usage list --location eastus2 --query "[?contains(name.value, 'OpenAI')]"
+```
+
+**Request quota increase**: [Azure Portal](https://portal.azure.com) → Support → New Support Request → Service and subscription limits (quotas)
+
+### Deployment Fails: "Resource Group Not Empty"
+
+**Solution**: Use a clean resource group or delete existing resources.
+
+```bash
+# List resources
+az resource list --resource-group rg-ai-foundry --output table
+
+# Delete resource group (WARNING: Deletes all resources)
+az group delete --name rg-ai-foundry --yes --no-wait
+```
+
+### Name Already Taken: "AIServices name X is not available"
+
+**Solution**: Choose a different globally unique name.
+
+**Name requirements**:
+- 2-64 characters
+- Alphanumeric and hyphens only
+- Must be globally unique across Azure
+
+**Example**: `my-company-ai-foundry-dev-20250101`
+
+### Bicep Build Errors
+
+**Solution**: Update Bicep CLI to latest version.
+
+```bash
+az bicep upgrade
+az bicep version
+```
+
+## Cleanup
+
+### Delete Deployment
+
+```bash
+# Delete entire resource group (WARNING: Irreversible)
+az group delete --name rg-ai-foundry --yes
+
+# Verify deletion
+az group exists --name rg-ai-foundry
+# Expected: false
+```
+
+### Archive Old Infrastructure
+
+The previous Azure OpenAI infrastructure (15 files) has been archived to:
+```
+infra-archive/2025-10-20-azure-openai/
+```
+
+## Migration from Azure OpenAI
+
+If migrating from the old Azure OpenAI standalone deployment, see [MIGRATION.md](../MIGRATION.md) for detailed migration steps and breaking changes.
+
+**Key differences**:
+- Old: Azure OpenAI standalone account
+- New: AI Foundry AIServices account + Project
+- Old: 5 models via Bicep (260K TPM)
+- New: 3 models via Bicep (200K TPM) + 2 serverless (manual)
+- Old: Single endpoint pattern
+- New: Hub-less project pattern with same endpoint compatibility
+
+## Additional Resources
+
+- [Azure AI Foundry Documentation](https://learn.microsoft.com/azure/ai-studio/)
+- [Bicep Language Reference](https://learn.microsoft.com/azure/azure-resource-manager/bicep/)
+- [Azure OpenAI Service](https://learn.microsoft.com/azure/ai-services/openai/)
+- [Hub-less Architecture Guide](https://learn.microsoft.com/azure/ai-studio/concepts/hub-less-architecture)
+
+## Support
+
+For issues or questions:
+- Create an issue in the repository
+- Review [quickstart scenarios](../specs/004-migrate-from-azure/quickstart.md)
+- Check [test results](tests/bicep/run-all-tests.sh)
 
 ---
-Available models in EastUS2
-Name                          Version
-----------------------------  ----------------
-gpt-35-turbo                  0613
-gpt-35-turbo                  1106
-gpt-35-turbo                  0125
-gpt-35-turbo-16k              0613
-gpt-4                         0125-Preview
-gpt-4                         1106-Preview
-gpt-4                         0613
-gpt-4-32k                     0613
-gpt-4                         turbo-2024-04-09
-gpt-4o                        2024-05-13
-gpt-4o                        2024-08-06
-gpt-4o-mini                   2024-07-18
-gpt-4o                        2024-11-20
-gpt-4o-mini-realtime-preview  2024-12-17
-gpt-4o-realtime-preview       2024-12-17
-gpt-4o-realtime-preview       2025-06-03
-gpt-4o-audio-preview          2024-12-17
-gpt-4o-mini-audio-preview     2024-12-17
-gpt-4o-transcribe             2025-03-20
-gpt-4o-mini-transcribe        2025-03-20
-gpt-4o-mini-tts               2025-03-20
-gpt-4.1                       2025-04-14
-gpt-4.1-mini                  2025-04-14
-gpt-4.1-nano                  2025-04-14
-gpt-5-mini                    2025-08-07
-gpt-5-nano                    2025-08-07
-gpt-5-chat                    2025-08-07
-gpt-audio                     2025-08-28
 
-
-**Constitutional Compliance**: v1.0.0 | **Feature**: 003-create-a-minimal | **Status**: ✅ Implemented
+**Feature**: 004-migrate-from-azure | **Constitution**: v1.0.0 | **Bicep Version**: @2024-06-01-preview
