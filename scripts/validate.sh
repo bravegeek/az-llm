@@ -49,10 +49,10 @@ MODELS=("gpt-4" "gpt-4o-mini" "gpt-4o")
 UNAVAILABLE=()
 
 for model in "${MODELS[@]}"; do
-    # Check if model is available in region
+    # Check if model is available in region (check for OpenAI.{model}* pattern)
     AVAILABLE=$(az cognitiveservices model list \
         --location "$LOCATION" \
-        --query "[?name=='$model'].name" \
+        --query "[?contains(name, 'OpenAI.$model')].name" \
         -o tsv 2>/dev/null || echo "")
 
     if [ -z "$AVAILABLE" ]; then
@@ -71,12 +71,12 @@ if [ ${#UNAVAILABLE[@]} -gt 0 ]; then
     exit 1
 fi
 
-# 4. TPM Quota validation (200K total: 50K+100K+50K)
+# 4. TPM Quota validation (66K total: 50K+8K+8K)
 echo "4/5 Checking TPM quota availability..."
 REQUIRED_QUOTAS=(
     "gpt-4:50"
-    "gpt-4o-mini:100"
-    "gpt-4o:50"
+    "gpt-4o-mini:8"
+    "gpt-4o:8"
 )
 
 for quota_spec in "${REQUIRED_QUOTAS[@]}"; do
@@ -93,8 +93,8 @@ for quota_spec in "${REQUIRED_QUOTAS[@]}"; do
         continue
     fi
 
-    CURRENT=$(echo "$USAGE_DATA" | jq -r '.[0].currentValue // 0')
-    LIMIT=$(echo "$USAGE_DATA" | jq -r '.[0].limit // 0')
+    CURRENT=$(echo "$USAGE_DATA" | jq -r '.[0].currentValue // 0 | floor')
+    LIMIT=$(echo "$USAGE_DATA" | jq -r '.[0].limit // 0 | floor')
     AVAILABLE=$((LIMIT - CURRENT))
 
     if [ "$AVAILABLE" -lt "$required_tpm" ]; then

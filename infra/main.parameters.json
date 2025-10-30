@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "location": {
-      "value": "eastus2"
+      "value": "eastus"
     },
     "aiServicesName": {
       "value": "bg-llm-foundry"
@@ -33,7 +33,7 @@
       "value": "2025-04-14"
     },
     "gpt4oMiniCapacity": {
-      "value": 100
+      "value": 8
     },
     "gpt4oDeploymentName": {
       "value": "gpt-4o-deployment"
@@ -42,7 +42,7 @@
       "value": "2024-08-06"
     },
     "gpt4oCapacity": {
-      "value": 50
+      "value": 8
     }
   }
 }
