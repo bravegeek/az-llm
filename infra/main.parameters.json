@@ -9,7 +9,7 @@
       "value": "bg-llm-foundry"
     },
     "customSubDomain": {
-      "value": "bg-llm-foundry"
+      "value": "bg-llm-foundry1"
     },
     "projectName": {
       "value": "foundry-project"
@@ -21,7 +21,7 @@
       "value": "gpt-4-deployment"
     },
     "gpt4Version": {
-      "value": "1106-preview"
+      "value": "1.2025-04-14"
     },
     "gpt4Capacity": {
       "value": 50
@@ -30,7 +30,7 @@
       "value": "gpt-4o-mini-deployment"
     },
     "gpt4oMiniVersion": {
-      "value": "2025-04-14"
+      "value": "2024-07-18"
     },
     "gpt4oMiniCapacity": {
       "value": 8

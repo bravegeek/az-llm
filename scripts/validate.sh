@@ -71,6 +71,101 @@ if [ ${#UNAVAILABLE[@]} -gt 0 ]; then
     exit 1
 fi
 
+# 3b. Validate specific model versions from parameters file
+echo ""
+echo "3b/5 Validating specific model versions from parameters file..."
+if [ -f "infra/main.parameters.json" ]; then
+    # Extract model versions from parameters file
+    GPT4_VERSION=$(jq -r '.parameters.gpt4Version.value // empty' infra/main.parameters.json)
+    GPT4O_MINI_VERSION=$(jq -r '.parameters.gpt4oMiniVersion.value // empty' infra/main.parameters.json)
+    GPT4O_VERSION=$(jq -r '.parameters.gpt4oVersion.value // empty' infra/main.parameters.json)
+
+    VERSION_ERRORS=()
+
+    # Check gpt-4 version
+    if [ -n "$GPT4_VERSION" ]; then
+        GPT4_FULL_NAME="OpenAI.gpt-4.$GPT4_VERSION"
+
+        # Check if model exists and get its lifecycle status
+        MODEL_DATA=$(az cognitiveservices model list --location "$LOCATION" -o json | jq --arg name "$GPT4_FULL_NAME" '[.[] | select(.name == $name)] | .[0]')
+        LIFECYCLE_STATUS=$(echo "$MODEL_DATA" | jq -r '.model.lifecycleStatus // "Unknown"')
+        DEPRECATION_DATE=$(echo "$MODEL_DATA" | jq -r '.model.deprecation.inference // empty')
+
+        if [ "$MODEL_DATA" = "null" ] || [ -z "$MODEL_DATA" ]; then
+            VERSION_ERRORS+=("gpt-4 version '$GPT4_VERSION' not found")
+            echo "❌ gpt-4 version '$GPT4_VERSION' not available"
+            echo "   Looking for: $GPT4_FULL_NAME"
+            echo "   Available non-deprecated versions:"
+            az cognitiveservices model list --location "$LOCATION" -o json | jq -r '.[] | select(.name | startswith("OpenAI.gpt-4.")) | select(.name | contains("gpt-4o") | not) | select(.model.lifecycleStatus != "Deprecated") | .name | sub("OpenAI.gpt-4."; "   - ")' | sort -u
+        elif [ "$LIFECYCLE_STATUS" = "Deprecated" ]; then
+            VERSION_ERRORS+=("gpt-4 version '$GPT4_VERSION' is deprecated")
+            echo "❌ gpt-4 version '$GPT4_VERSION' is DEPRECATED (since $DEPRECATION_DATE)"
+            echo "   Available non-deprecated versions:"
+            az cognitiveservices model list --location "$LOCATION" -o json | jq -r '.[] | select(.name | startswith("OpenAI.gpt-4.")) | select(.name | contains("gpt-4o") | not) | select(.model.lifecycleStatus != "Deprecated") | .name | sub("OpenAI.gpt-4."; "   - ")' | sort -u
+        else
+            echo "✅ gpt-4 version '$GPT4_VERSION' available (status: $LIFECYCLE_STATUS)"
+        fi
+    fi
+
+    # Check gpt-4o-mini version
+    if [ -n "$GPT4O_MINI_VERSION" ]; then
+        GPT4O_MINI_FULL_NAME="OpenAI.gpt-4o-mini.$GPT4O_MINI_VERSION"
+
+        MODEL_DATA=$(az cognitiveservices model list --location "$LOCATION" -o json | jq --arg name "$GPT4O_MINI_FULL_NAME" '[.[] | select(.name == $name)] | .[0]')
+        LIFECYCLE_STATUS=$(echo "$MODEL_DATA" | jq -r '.model.lifecycleStatus // "Unknown"')
+        DEPRECATION_DATE=$(echo "$MODEL_DATA" | jq -r '.model.deprecation.inference // empty')
+
+        if [ "$MODEL_DATA" = "null" ] || [ -z "$MODEL_DATA" ]; then
+            VERSION_ERRORS+=("gpt-4o-mini version '$GPT4O_MINI_VERSION' not found")
+            echo "❌ gpt-4o-mini version '$GPT4O_MINI_VERSION' not available"
+            echo "   Looking for: $GPT4O_MINI_FULL_NAME"
+            echo "   Available non-deprecated versions:"
+            az cognitiveservices model list --location "$LOCATION" -o json | jq -r '.[] | select(.name | startswith("OpenAI.gpt-4o-mini.")) | select(.model.lifecycleStatus != "Deprecated") | .name | sub("OpenAI.gpt-4o-mini."; "   - ")' | sort -u
+        elif [ "$LIFECYCLE_STATUS" = "Deprecated" ]; then
+            VERSION_ERRORS+=("gpt-4o-mini version '$GPT4O_MINI_VERSION' is deprecated")
+            echo "❌ gpt-4o-mini version '$GPT4O_MINI_VERSION' is DEPRECATED (since $DEPRECATION_DATE)"
+            echo "   Available non-deprecated versions:"
+            az cognitiveservices model list --location "$LOCATION" -o json | jq -r '.[] | select(.name | startswith("OpenAI.gpt-4o-mini.")) | select(.model.lifecycleStatus != "Deprecated") | .name | sub("OpenAI.gpt-4o-mini."; "   - ")' | sort -u
+        else
+            echo "✅ gpt-4o-mini version '$GPT4O_MINI_VERSION' available (status: $LIFECYCLE_STATUS)"
+        fi
+    fi
+
+    # Check gpt-4o version
+    if [ -n "$GPT4O_VERSION" ]; then
+        GPT4O_FULL_NAME="OpenAI.gpt-4o.$GPT4O_VERSION"
+
+        MODEL_DATA=$(az cognitiveservices model list --location "$LOCATION" -o json | jq --arg name "$GPT4O_FULL_NAME" '[.[] | select(.name == $name)] | .[0]')
+        LIFECYCLE_STATUS=$(echo "$MODEL_DATA" | jq -r '.model.lifecycleStatus // "Unknown"')
+        DEPRECATION_DATE=$(echo "$MODEL_DATA" | jq -r '.model.deprecation.inference // empty')
+
+        if [ "$MODEL_DATA" = "null" ] || [ -z "$MODEL_DATA" ]; then
+            VERSION_ERRORS+=("gpt-4o version '$GPT4O_VERSION' not found")
+            echo "❌ gpt-4o version '$GPT4O_VERSION' not available"
+            echo "   Looking for: $GPT4O_FULL_NAME"
+            echo "   Available non-deprecated versions:"
+            az cognitiveservices model list --location "$LOCATION" -o json | jq -r '.[] | select(.name | startswith("OpenAI.gpt-4o.")) | select(.name | contains("mini") | not) | select(.name | contains("audio") | not) | select(.model.lifecycleStatus != "Deprecated") | .name | sub("OpenAI.gpt-4o."; "   - ")' | sort -u
+        elif [ "$LIFECYCLE_STATUS" = "Deprecated" ]; then
+            VERSION_ERRORS+=("gpt-4o version '$GPT4O_VERSION' is deprecated")
+            echo "❌ gpt-4o version '$GPT4O_VERSION' is DEPRECATED (since $DEPRECATION_DATE)"
+            echo "   Available non-deprecated versions:"
+            az cognitiveservices model list --location "$LOCATION" -o json | jq -r '.[] | select(.name | startswith("OpenAI.gpt-4o.")) | select(.name | contains("mini") | not) | select(.name | contains("audio") | not) | select(.model.lifecycleStatus != "Deprecated") | .name | sub("OpenAI.gpt-4o."; "   - ")' | sort -u
+        else
+            echo "✅ gpt-4o version '$GPT4O_VERSION' available (status: $LIFECYCLE_STATUS)"
+        fi
+    fi
+
+    if [ ${#VERSION_ERRORS[@]} -gt 0 ]; then
+        echo ""
+        echo "❌ ${#VERSION_ERRORS[@]} model version(s) not supported"
+        echo "   Update infra/main.parameters.json with supported versions"
+        exit 1
+    fi
+else
+    echo "⚠️  Parameters file not found, skipping version validation"
+fi
+echo ""
+
 # 4. TPM Quota validation (66K total: 50K+8K+8K)
 echo "4/5 Checking TPM quota availability..."
 REQUIRED_QUOTAS=(
